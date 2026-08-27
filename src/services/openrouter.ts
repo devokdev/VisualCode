@@ -29,7 +29,7 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
       messages,
       response_format: jsonMode ? { type: 'json_object' } : undefined,
       temperature: 0.1,
-      max_tokens: 3000,
+      max_tokens: 4500,
     }),
   });
 
@@ -39,25 +39,43 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
   }
 
   const data = await res.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
+  const rawContent = data.choices?.[0]?.message?.content;
+  if (!rawContent) {
     throw new Error('Received empty response from OpenRouter AI.');
   }
 
   if (jsonMode) {
+    // 1. Direct parse attempt
     try {
-      return JSON.parse(content);
+      return JSON.parse(rawContent.trim());
     } catch {
-      // Fallback: extract JSON from markdown block if wrapped
-      const match = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (match) {
-        return JSON.parse(match[1]);
+      // 2. Extract from markdown code fence
+      const blockMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+      if (blockMatch) {
+        try {
+          return JSON.parse(blockMatch[1].trim());
+        } catch {
+          // continue fallback
+        }
       }
-      throw new Error('Failed to parse AI structured response as JSON.');
+
+      // 3. Find first '{' and last '}' substring
+      const startIdx = rawContent.indexOf('{');
+      const endIdx = rawContent.lastIndexOf('}');
+      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+        const candidate = rawContent.slice(startIdx, endIdx + 1);
+        try {
+          return JSON.parse(candidate);
+        } catch (subErr: any) {
+          console.error('JSON recovery error:', subErr, candidate);
+        }
+      }
+
+      throw new Error(`Failed to parse AI structured response as JSON. Output was: ${rawContent.slice(0, 200)}...`);
     }
   }
 
-  return content;
+  return rawContent;
 }
 
 export async function fetchLeetCodeProblem(query: string): Promise<ProblemContext> {
