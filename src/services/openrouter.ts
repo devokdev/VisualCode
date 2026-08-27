@@ -3,16 +3,14 @@ import type { ExecutionAnalysisResult, Language, ProblemContext } from '../types
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Ultra-cheap & free models list for automatic cascading fallback:
-// 1. deepseek/deepseek-chat (10x cheaper than Gemini, highly capable at coding & structured JSON)
-// 2. google/gemini-2.0-flash-lite-001 (ultra lightweight & cheap)
-// 3. meta-llama/llama-3.3-70b-instruct:free (free tier fallback)
-// 4. google/gemini-2.5-flash
+// 100% Free / Ultra-Low-Credit Models:
+// Models with :free suffix or extremely low cost per token (Qwen, Llama 3, DeepSeek, Gemma)
 const MODELS_PRIORITY = [
-  'deepseek/deepseek-chat',
-  'google/gemini-2.0-flash-lite-001',
   'meta-llama/llama-3.3-70b-instruct:free',
-  'google/gemini-2.5-flash',
+  'qwen/qwen-2.5-coder-32b-instruct:free',
+  'google/gemini-2.0-flash-lite-001',
+  'deepseek/deepseek-chat',
+  'mistralai/mistral-small-24b-instruct-2501:free',
 ];
 
 export function getApiKey(): string {
@@ -57,7 +55,7 @@ function parseAndRepairJson(rawContent: string): any {
   throw new Error('Could not parse AI response. Please try re-running.');
 }
 
-async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 1200): Promise<any> {
+async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 800): Promise<any> {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('Missing API Key. Please click the "API Key" button at the top right to configure your OpenRouter API Key.');
@@ -65,9 +63,10 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
 
   let lastError: Error | null = null;
 
-  // Try each model in sequence (cascade fallback to cheaper/free models)
+  // Try each model in sequence (cascade fallback to free models)
   for (const model of MODELS_PRIORITY) {
     try {
+      const supportsJsonFormat = !model.includes('free');
       const res = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
         headers: {
@@ -79,7 +78,7 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
         body: JSON.stringify({
           model,
           messages,
-          response_format: jsonMode ? { type: 'json_object' } : undefined,
+          response_format: jsonMode && supportsJsonFormat ? { type: 'json_object' } : undefined,
           temperature: 0.1,
           max_tokens: maxTokens,
         }),
@@ -89,7 +88,6 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
         const errText = await res.text();
         console.warn(`Model ${model} returned error (${res.status}):`, errText);
         lastError = new Error(`OpenRouter (${model}): ${errText}`);
-        // If 402 or rate-limited, continue to next cheaper/free model
         continue;
       }
 
@@ -105,27 +103,28 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
 
       return rawContent;
     } catch (err: any) {
+      console.warn(`Failed with ${model}:`, err);
       lastError = err;
     }
   }
 
-  throw lastError || new Error('All model fallbacks failed. Please check your OpenRouter credits.');
+  throw lastError || new Error('All free model fallbacks failed. Please verify your OpenRouter key.');
 }
 
 export async function fetchLeetCodeProblem(query: string): Promise<ProblemContext> {
   const prompt = `You are a LeetCode problem scraper and data structures expert.
-Given the user query (which can be a problem title like "Rotate Array", a problem number like "189", or a concept), return the complete structured problem context.
+Given the user query (e.g. "Rotate Array", "189", "Invert Binary Tree"), return the complete structured problem context in valid JSON.
 
 Query: "${query}"
 
 CRITICAL RULE FOR dataStructureType:
-- If the problem involves arrays, lists, rotations, two pointers, sliding window, sorting, prefix sums: set "dataStructureType": "array"
-- If tree/BST: "tree" | "bst"
-- If graph/BFS/DFS on graph: "graph"
-- If linked list: "linked_list"
-- If 2D grid/matrix: "matrix"
+- Arrays/rotations/two-pointers: "array"
+- Tree/BST: "tree" | "bst"
+- Graph: "graph"
+- Linked list: "linked_list"
+- 2D grid: "matrix"
 
-Respond with ONLY a valid JSON object matching this TypeScript structure:
+Respond with ONLY valid JSON:
 {
   "title": string,
   "slug": string,
@@ -133,11 +132,7 @@ Respond with ONLY a valid JSON object matching this TypeScript structure:
   "tags": string[],
   "description": string,
   "examples": [
-    {
-      "input": string,
-      "output": string,
-      "explanation": string
-    }
+    { "input": string, "output": string, "explanation": string }
   ],
   "constraints": string[],
   "starterCode": {
@@ -149,11 +144,11 @@ Respond with ONLY a valid JSON object matching this TypeScript structure:
 }`;
 
   const messages = [
-    { role: 'system', content: 'You generate exact LeetCode problem specifications in clean JSON format.' },
+    { role: 'system', content: 'Respond with valid, raw JSON only without markdown explanation.' },
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true, 1000);
+  return await callOpenRouter(messages, true, 800);
 }
 
 export async function analyzeAndTraceExecution(
@@ -172,8 +167,7 @@ export async function analyzeAndTraceExecution(
 PROBLEM:
 Title: ${problem.title}
 Data Structure: ${dsType}
-Description: ${problem.description}
-Test Input to Execute: ${activeInput}
+Test Input: ${activeInput}
 Expected Output: ${expectedOutput}
 
 USER CODE (${language.toUpperCase()}):
@@ -182,23 +176,23 @@ ${code}
 \`\`\`
 
 INSTRUCTIONS:
-1. Classify error type:
-   - 'syntax': Compiler/syntax error, missing semicolons/brackets.
-   - 'semantic': Runtime crashes (NullPointerException, out of bounds, infinite loop).
-   - 'logical': Runs cleanly, but output/state is incorrect.
-   - 'none': Correct logic and passes expected output.
+1. Classify error:
+   - 'syntax': Compiler/syntax error.
+   - 'semantic': Runtime crash.
+   - 'logical': Runs, but output is wrong.
+   - 'none': Correct logic.
 
 2. Step-by-step Execution Trace:
-   - Provide 4 to 8 concise key execution steps.
+   - Provide 4 to 6 concise key execution steps.
    - For EACH step, MUST populate the matching data structure state for "${dsType}":
-     * If "${dsType}" is "array": you MUST populate "arrayState" as an array of objects: [{ "index": 0, "val": 1, "pointers": ["i"], "status": "active" }, { "index": 1, "val": 2, "pointers": [], "status": "default" }] showing the current array values and where any pointers/indices (i, j, k, left, right) are.
+     * If "${dsType}" is "array": populate "arrayState" with [{ "index": 0, "val": 1, "pointers": ["i"], "status": "active" }] showing array values and pointer badges.
      * If "${dsType}" is "tree" or "bst": populate "treeState" with { id, val, pointers, status, left, right }.
      * If "${dsType}" is "linked_list": populate "linkedListState" with [{ id, val, pointers, status }].
      * If "${dsType}" is "graph": populate "graphState" with { nodes, edges }.
      * If "${dsType}" is "matrix": populate "matrixState" with { rows, cols, grid: [[{ val, status, pointers }]] }.
-   - Always populate "variables" with active local variable values (e.g. { "i": 3, "k": 3 }).
+   - Always populate "variables" with active local variable values (e.g. { "i": 3, "k": 3, "nums": [1,2,3,4,5,6,7] }).
 
-3. Return ONLY a valid JSON object matching this schema:
+3. Return ONLY valid JSON matching this schema:
 {
   "errorClassification": {
     "type": "syntax" | "semantic" | "logical" | "none",
@@ -217,14 +211,13 @@ INSTRUCTIONS:
       "step": 1,
       "line": 4,
       "explanation": "Brief description of action",
-      "variables": { "i": 0, "k": 3 },
+      "variables": { "i": 0, "k": 3, "nums": [1,2,3,4,5,6,7] },
       "callStack": [{ "functionName": "rotate", "args": {}, "depth": 1 }],
       "treeState": null,
       "graphState": null,
       "linkedListState": null,
       "arrayState": [
-        { "index": 0, "val": 1, "pointers": ["i"], "status": "active" },
-        { "index": 1, "val": 2, "pointers": [], "status": "default" }
+        { "index": 0, "val": 1, "pointers": ["i"], "status": "active" }
       ],
       "matrixState": null,
       "stdout": null,
@@ -234,9 +227,9 @@ INSTRUCTIONS:
 }`;
 
   const messages = [
-    { role: 'system', content: 'You are a high-precision code tracer that always returns valid JSON and always populates arrayState, treeState, or graphState according to the problem dataStructureType.' },
+    { role: 'system', content: 'Respond with valid, raw JSON only without markdown explanation.' },
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true, 1200);
+  return await callOpenRouter(messages, true, 800);
 }
