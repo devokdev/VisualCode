@@ -13,7 +13,7 @@ import { SequenceVisualizer } from './components/visualizers/SequenceVisualizer'
 import { ProblemsListView } from './components/ProblemsListView';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { ProblemStatementModal } from './components/ProblemStatementModal';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, GitBranch, FileText, Box, Layers, Terminal } from 'lucide-react';
 
 const DEFAULT_PROBLEM_QUERY = '199. Binary Tree Right Side View';
 
@@ -142,7 +142,7 @@ export function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#141414] text-[#eff1f6] flex flex-col font-sans overflow-hidden">
+    <div className="h-screen w-screen bg-[#0e0e11] text-[#f4f4f5] flex flex-col font-sans overflow-hidden">
       {/* 1. Top Bar: Search • Language • API Key • Debug Drawer • Run */}
       <TopBar
         problem={problem}
@@ -171,7 +171,7 @@ export function App() {
         <div className="flex-1 flex flex-col min-h-0 relative">
           {/* Compact Error Banner if exists */}
           {traceResult?.errorClassification && (
-            <div className="px-4 py-2 bg-[#1a1a1a] border-b border-[#333333]">
+            <div className="px-4 py-2 bg-[#141418] border-b border-white/[0.06]">
               <CompactErrorBanner error={traceResult.errorClassification} />
             </div>
           )}
@@ -179,7 +179,7 @@ export function App() {
           {/* 3-Panel Core IDE: Left Editor (58%) | Right Visualizer Tabs (42%) */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Left Panel: Monaco Code Editor */}
-            <div className="w-[58%] h-full flex flex-col border-r border-[#333333] min-w-0">
+            <div className="w-[58%] h-full flex flex-col border-r border-white/[0.06] min-w-0">
               <CodeEditor
                 code={code}
                 onChange={(val) => setCode(val || '')}
@@ -190,31 +190,33 @@ export function App() {
             </div>
 
             {/* Right Panel: Tabbed Visualizer & Debugger */}
-            <div className="flex-1 h-full flex flex-col bg-[#1e1e1e] min-w-0 relative">
-              {/* Right Panel Header Tabs - Only visible when drawer is CLOSED */}
+            <div className="flex-1 h-full flex flex-col bg-[#141418] min-w-0 relative">
+              {/* Right Panel Header Tabs - Lucide icons, no emojis */}
               {!isDrawerOpen && (
-                <div className="h-9 border-b border-[#333333] bg-[#242424] px-3 flex items-center justify-between">
+                <div className="h-9 border-b border-white/[0.06] bg-[#1a1a20] px-3 flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setVisualizerTab('tree')}
-                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                         visualizerTab === 'tree'
-                          ? 'bg-[#333333] text-[#ffa116]'
-                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                          ? 'bg-[#26262e] text-[#ffa116] border border-white/[0.06] shadow-sm'
+                          : 'text-[#71717a] hover:text-[#d4d4d8]'
                       }`}
                     >
-                      🌳 Visualizer
+                      <GitBranch className="w-3.5 h-3.5" />
+                      <span>Visualizer</span>
                     </button>
 
                     <button
                       onClick={() => setVisualizerTab('problem')}
-                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                         visualizerTab === 'problem'
-                          ? 'bg-[#333333] text-[#ffa116]'
-                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                          ? 'bg-[#26262e] text-[#ffa116] border border-white/[0.06] shadow-sm'
+                          : 'text-[#71717a] hover:text-[#d4d4d8]'
                       }`}
                     >
-                      📄 Problem
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Problem</span>
                     </button>
 
                     <button
@@ -222,13 +224,14 @@ export function App() {
                         setVisualizerTab('debug');
                         setDebugTab('variables');
                       }}
-                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                         visualizerTab === 'debug' && debugTab === 'variables'
-                          ? 'bg-[#333333] text-[#ffa116]'
-                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                          ? 'bg-[#26262e] text-[#ffa116] border border-white/[0.06] shadow-sm'
+                          : 'text-[#71717a] hover:text-[#d4d4d8]'
                       }`}
                     >
-                      📦 Variables
+                      <Box className="w-3.5 h-3.5" />
+                      <span>Variables</span>
                     </button>
 
                     <button
@@ -236,13 +239,14 @@ export function App() {
                         setVisualizerTab('debug');
                         setDebugTab('callstack');
                       }}
-                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                         visualizerTab === 'debug' && debugTab === 'callstack'
-                          ? 'bg-[#333333] text-[#ffa116]'
-                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                          ? 'bg-[#26262e] text-[#ffa116] border border-white/[0.06] shadow-sm'
+                          : 'text-[#71717a] hover:text-[#d4d4d8]'
                       }`}
                     >
-                      🧵 Call Stack
+                      <Layers className="w-3.5 h-3.5" />
+                      <span>Call Stack</span>
                     </button>
 
                     <button
@@ -250,13 +254,14 @@ export function App() {
                         setVisualizerTab('debug');
                         setDebugTab('output');
                       }}
-                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-all flex items-center gap-1.5 ${
                         visualizerTab === 'debug' && debugTab === 'output'
-                          ? 'bg-[#333333] text-[#ffa116]'
-                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                          ? 'bg-[#26262e] text-[#ffa116] border border-white/[0.06] shadow-sm'
+                          : 'text-[#71717a] hover:text-[#d4d4d8]'
                       }`}
                     >
-                      📝 Output
+                      <Terminal className="w-3.5 h-3.5" />
+                      <span>Output</span>
                     </button>
                   </div>
 
@@ -264,7 +269,7 @@ export function App() {
                     {problem && (
                       <button
                         onClick={() => setIsProblemModalOpen(true)}
-                        className="text-[#8c8c8c] hover:text-[#ffa116] transition-colors truncate max-w-[200px] flex items-center gap-1 font-medium"
+                        className="text-[#71717a] hover:text-[#ffa116] transition-colors truncate max-w-[200px] flex items-center gap-1 font-medium"
                         title="Click to view full problem description in modal"
                       >
                         <span>{problem.title}</span>
@@ -278,19 +283,19 @@ export function App() {
               <div className="flex-1 min-h-0 relative overflow-y-auto">
                 {isDrawerOpen || visualizerTab === 'tree' ? (
                   renderVisualizerContent() || (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-[#8c8c8c]">
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-[#71717a]">
                       <Sparkles className="w-6 h-6 text-[#ffa116] mb-2" />
-                      <h4 className="text-sm font-semibold text-[#eff1f6] mb-1">Visualizer Ready</h4>
-                      <p className="text-xs max-w-xs text-[#8c8c8c]">
+                      <h4 className="text-sm font-semibold text-[#f4f4f5] mb-1">Visualizer Ready</h4>
+                      <p className="text-xs max-w-xs text-[#71717a]">
                         Click <strong className="text-[#ffa116]">Run</strong> in the top bar to step through code execution.
                       </p>
                     </div>
                   )
                 ) : visualizerTab === 'problem' ? (
                   problem ? (
-                    <div className="p-6 space-y-4 text-xs text-[#d4d4d4] leading-relaxed">
+                    <div className="p-6 space-y-4 text-xs text-[#d4d4d8] leading-relaxed">
                       <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-[#eff1f6]">{problem.title}</h2>
+                        <h2 className="text-sm font-bold text-[#f4f4f5]">{problem.title}</h2>
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                             problem.difficulty === 'Easy'
@@ -304,17 +309,17 @@ export function App() {
                         </span>
                       </div>
 
-                      <div className="bg-[#242424] p-4 rounded-xl border border-[#333333] whitespace-pre-line text-xs">
+                      <div className="bg-[#1a1a20] p-4 rounded-xl border border-white/[0.06] whitespace-pre-line text-xs">
                         {problem.description}
                       </div>
 
                       {problem.examples && problem.examples.length > 0 && (
                         <div className="space-y-2">
-                          <h4 className="font-bold text-[#eff1f6] text-xs font-mono uppercase">Examples</h4>
+                          <h4 className="font-bold text-[#f4f4f5] text-xs font-mono uppercase">Examples</h4>
                           {problem.examples.map((ex, idx) => (
-                            <div key={idx} className="bg-[#242424] p-3 rounded-xl border border-[#333333] space-y-1 font-mono text-xs">
-                              <div><span className="text-[#8c8c8c]">Input: </span><span className="text-[#ffa116]">{ex.input}</span></div>
-                              <div><span className="text-[#8c8c8c]">Output: </span><span className="text-[#2cbb5d]">{ex.output}</span></div>
+                            <div key={idx} className="bg-[#1a1a20] p-3 rounded-xl border border-white/[0.06] space-y-1 font-mono text-xs">
+                              <div><span className="text-[#71717a]">Input: </span><span className="text-[#ffa116]">{ex.input}</span></div>
+                              <div><span className="text-[#71717a]">Output: </span><span className="text-[#10b981]">{ex.output}</span></div>
                             </div>
                           ))}
                         </div>
@@ -322,8 +327,8 @@ export function App() {
 
                       {problem.constraints && (
                         <div className="space-y-1">
-                          <h4 className="font-bold text-[#eff1f6] text-xs font-mono uppercase">Constraints</h4>
-                          <ul className="list-disc pl-5 space-y-1 text-[#8c8c8c] font-mono text-[11px]">
+                          <h4 className="font-bold text-[#f4f4f5] text-xs font-mono uppercase">Constraints</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-[#71717a] font-mono text-[11px]">
                             {problem.constraints.map((c, idx) => (
                               <li key={idx}>{c}</li>
                             ))}
@@ -332,7 +337,7 @@ export function App() {
                       )}
                     </div>
                   ) : (
-                    <div className="p-6 text-center text-xs text-[#8c8c8c]">No problem loaded</div>
+                    <div className="p-6 text-center text-xs text-[#71717a]">No problem loaded</div>
                   )
                 ) : (
                   <DebugPanel
@@ -350,7 +355,7 @@ export function App() {
 
             {/* Collapsible Debug Drawer */}
             {isDrawerOpen && (
-              <div className="w-80 h-full border-l border-[#333333] bg-[#1e1e1e] flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+              <div className="w-80 h-full border-l border-white/[0.06] bg-[#141418] flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
                 <DebugPanel
                   activeTab={debugTab}
                   onSelectTab={setDebugTab}
