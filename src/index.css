@@ -1,77 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --font-serif: 'Playfair Display', Georgia, serif;
-  --font-heading: 'Cinzel', 'Playfair Display', Georgia, serif;
-  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
-  /* LeetCode Dark Scholar & Golden Amber Palette */
-  --bg-primary: #0a0a0c;
-  --bg-secondary: #101116;
-  --bg-tertiary: #16171f;
-  --bg-card: #12131a;
-  --border-gold: rgba(212, 175, 55, 0.2);
-  --border-gold-subtle: rgba(212, 175, 55, 0.1);
-  --gold-primary: #d4af37;
-  --gold-glow: #f6e05e;
-  --text-gold: #e2c069;
+  /* LeetCode Dark Professional Palette */
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #262626;
+  --bg-tertiary: #2f2f2f;
+  --bg-darker: #141414;
 }
 
 body {
   margin: 0;
   padding: 0;
-  background-color: #0b0b0e;
-  color: #e2e8f0;
+  background-color: #141414;
+  color: #eff1f6;
   font-family: var(--font-sans);
-  background-image: 
-    radial-gradient(ellipse at 15% 10%, rgba(212, 175, 55, 0.035) 0%, transparent 60%),
-    radial-gradient(ellipse at 85% 85%, rgba(99, 102, 241, 0.03) 0%, transparent 60%);
-  background-attachment: fixed;
 }
 
-.font-heading {
-  font-family: var(--font-heading);
-}
-
-.font-serif-title {
-  font-family: var(--font-serif);
-}
-
-/* LeetCode Difficulty Badges */
+/* Authentic LeetCode Badges */
 .badge-easy {
   background-color: rgba(0, 184, 163, 0.15);
   color: #00b8a3;
-  border: 1px solid rgba(0, 184, 163, 0.35);
+  border: 1px solid rgba(0, 184, 163, 0.3);
 }
 
 .badge-medium {
   background-color: rgba(255, 192, 30, 0.15);
   color: #ffc01e;
-  border: 1px solid rgba(255, 192, 30, 0.35);
+  border: 1px solid rgba(255, 192, 30, 0.3);
 }
 
 .badge-hard {
   background-color: rgba(255, 55, 95, 0.15);
   color: #ff375f;
-  border: 1px solid rgba(255, 55, 95, 0.35);
-}
-
-/* Gold Ornament Accents */
-.gold-card {
-  background: linear-gradient(180deg, #13141c 0%, #0e0f14 100%);
-  border: 1px solid rgba(212, 175, 55, 0.18);
-  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.7);
-}
-
-.gold-card-hover {
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.gold-card-hover:hover {
-  border-color: rgba(212, 175, 55, 0.4);
-  transform: translateY(-2px);
-  box-shadow: 0 14px 34px -10px rgba(212, 175, 55, 0.08);
+  border: 1px solid rgba(255, 55, 95, 0.3);
 }
 
 /* Custom Scrollbar */
@@ -81,14 +45,14 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0c;
+  background: #141414;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #272733;
+  background: #333333;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #d4af37;
+  background: #ffa116;
 }

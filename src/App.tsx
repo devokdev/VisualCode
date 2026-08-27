@@ -18,14 +18,6 @@ import { Sparkles, Terminal, Code2 } from 'lucide-react';
 
 const DEFAULT_PROBLEM_QUERY = '98. Validate Binary Search Tree';
 
-const RECENT_PROBLEMS = [
-  { title: '98. Validate Binary Search Tree', difficulty: 'Medium' as const, timeAgo: '2m ago' },
-  { title: 'Invert Binary Tree', difficulty: 'Easy' as const, timeAgo: '45m ago' },
-  { title: '200. Number of Islands', difficulty: 'Medium' as const, timeAgo: '1h ago' },
-  { title: '15. 3Sum', difficulty: 'Medium' as const, timeAgo: '3h ago' },
-  { title: '146. LRU Cache', difficulty: 'Hard' as const, timeAgo: 'Yesterday' },
-];
-
 export function App() {
   const [currentTab, setCurrentTab] = useState<'dashboard' | 'problems' | 'editor' | 'visualizer' | 'history' | 'settings'>('dashboard');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
@@ -36,6 +28,14 @@ export function App() {
   const [activeInput, setActiveInput] = useState<string>('');
   const [isLoadingProblem, setIsLoadingProblem] = useState<boolean>(false);
   const [isTracing, setIsTracing] = useState<boolean>(false);
+
+  const [recentSearchedProblems, setRecentSearchedProblems] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('visualcode_recent_searches') || '[]');
+    } catch {
+      return [];
+    }
+  });
 
   const [traceResult, setTraceResult] = useState<ExecutionAnalysisResult | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
@@ -57,6 +57,13 @@ export function App() {
       setTraceResult(null);
       setCurrentStepIndex(0);
       setIsPlaying(false);
+
+      // Save to real recent history
+      setRecentSearchedProblems((prev) => {
+        const updated = [data.title, ...prev.filter((p) => p !== data.title)].slice(0, 10);
+        localStorage.setItem('visualcode_recent_searches', JSON.stringify(updated));
+        return updated;
+      });
     } catch (err: any) {
       alert(`Error fetching problem: ${err.message}`);
     } finally {
@@ -135,7 +142,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0d] text-slate-100 flex font-sans selection:bg-[#d4af37]/30 selection:text-[#f6e05e]">
+    <div className="min-h-screen bg-[#141414] text-[#eff1f6] flex font-sans selection:bg-[#ffa116]/30 selection:text-[#ffb23d]">
       {/* Sidebar Navigation */}
       <Sidebar
         currentTab={currentTab}
@@ -146,9 +153,9 @@ export function App() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen overflow-y-auto">
         {/* Top Navbar */}
-        <header className="px-8 py-3 bg-[#0d0e14]/90 border-b border-[#d4af37]/15 backdrop-blur sticky top-0 z-30 flex items-center justify-between">
+        <header className="px-8 py-3 bg-[#1a1a1a] border-b border-[#2a2a2a] sticky top-0 z-30 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="font-heading text-sm font-bold tracking-wider text-[#e6c97a]">
+            <h1 className="text-xs font-bold uppercase tracking-wider text-[#8a8a8e]">
               {currentTab === 'dashboard'
                 ? 'DASHBOARD'
                 : currentTab === 'problems'
@@ -161,10 +168,10 @@ export function App() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-[#a09a88]">
-            <div className="flex items-center gap-1.5 bg-[#141520] px-3 py-1 rounded-lg border border-[#d4af37]/20">
+          <div className="flex items-center gap-3 text-xs text-[#8a8a8e]">
+            <div className="flex items-center gap-1.5 bg-[#262626] px-3 py-1 rounded-lg border border-[#333333]">
               <span className="w-2 h-2 rounded-full bg-[#00b8a3] animate-pulse" />
-              <span className="font-mono text-[11px] text-[#e2e8f0]">OpenRouter Gemini 2.5 Flash</span>
+              <span className="font-mono text-[11px] text-[#eff1f6]">OpenRouter Gemini 2.5 Flash</span>
             </div>
           </div>
         </header>
@@ -175,7 +182,7 @@ export function App() {
             onSelectProblem={(q) => handleFetchProblem(q)}
             onNavigateTab={setCurrentTab}
             onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
-            recentProblems={RECENT_PROBLEMS}
+            recentSearchedProblems={recentSearchedProblems}
           />
         )}
 
@@ -183,6 +190,8 @@ export function App() {
           <ProblemsListView
             onSelectProblem={(q) => handleFetchProblem(q)}
             onNavigateTab={setCurrentTab}
+            onFetchDynamicProblem={handleFetchProblem}
+            isLoading={isLoadingProblem}
           />
         )}
 
@@ -241,13 +250,13 @@ export function App() {
                   {/* Data Structure Canvas (8 cols on md) */}
                   <div className="md:col-span-7 flex flex-col min-h-[380px]">
                     {renderVisualizer() || (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-[#11121a] rounded-2xl border border-[#d4af37]/20 text-center shadow-xl">
-                        <div className="w-12 h-12 rounded-xl bg-[#1c1d29] flex items-center justify-center text-[#d4af37] mb-3 border border-[#d4af37]/30 shadow-inner">
+                      <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-[#1e1e1e] rounded-2xl border border-[#2e2e2e] text-center shadow-xl">
+                        <div className="w-12 h-12 rounded-xl bg-[#262626] flex items-center justify-center text-[#ffa116] mb-3 border border-[#383838]">
                           <Sparkles className="w-6 h-6" />
                         </div>
-                        <h3 className="font-serif-title text-sm font-semibold text-[#f1ede2] mb-1">Visualizer Ready</h3>
-                        <p className="text-xs text-[#8e8a9c] max-w-sm leading-relaxed">
-                          Write your Python, Java, or C++ implementation and click <strong className="text-[#d4af37]">Run & Visualize</strong> to inspect tree pointers, nodes, and step execution.
+                        <h3 className="text-sm font-bold text-[#eff1f6] mb-1">Visualizer Ready</h3>
+                        <p className="text-xs text-[#8a8a8e] max-w-sm leading-relaxed">
+                          Write your Python, Java, or C++ implementation and click <strong className="text-[#ffa116]">Run & Visualize</strong> to inspect tree pointers, nodes, and step execution.
                         </p>
                       </div>
                     )}
@@ -270,17 +279,17 @@ export function App() {
 
         {(currentTab === 'history' || currentTab === 'settings') && (
           <div className="flex-1 flex items-center justify-center p-8">
-            <div className="p-8 rounded-2xl border border-[#d4af37]/20 bg-[#11121a] text-center max-w-md shadow-2xl">
-              <Code2 className="w-8 h-8 text-[#d4af37] mx-auto mb-3" />
-              <h3 className="font-serif-title text-base font-semibold text-[#f1ede2] mb-1">
+            <div className="p-8 rounded-2xl border border-[#2e2e2e] bg-[#1e1e1e] text-center max-w-md shadow-2xl">
+              <Code2 className="w-8 h-8 text-[#ffa116] mx-auto mb-3" />
+              <h3 className="text-base font-bold text-[#eff1f6] mb-1">
                 {currentTab === 'history' ? 'Execution History' : 'Preferences & Settings'}
               </h3>
-              <p className="text-xs text-[#8e8a9c] mb-4">
+              <p className="text-xs text-[#8a8a8e] mb-4">
                 Configure your OpenRouter models, editor font sizes, and view past algorithm runs.
               </p>
               <button
                 onClick={() => setIsApiKeyModalOpen(true)}
-                className="px-4 py-2 bg-[#d4af37] text-[#0a0a0e] font-bold text-xs rounded-xl shadow-md"
+                className="px-4 py-2 bg-[#ffa116] text-[#141414] font-bold text-xs rounded-xl shadow-md"
               >
                 Configure API Key
               </button>
@@ -289,11 +298,11 @@ export function App() {
         )}
 
         {/* Footer */}
-        <footer className="px-8 py-3 bg-[#0c0d12] border-t border-[#d4af37]/15 text-[11px] text-[#7d7a8a] flex items-center justify-between">
-          <span>VisualCode • Visualize. Debug. Conquer.</span>
-          <div className="flex items-center gap-1.5 text-[#9d98a8]">
-            <Terminal className="w-3.5 h-3.5 text-[#d4af37]" />
-            <span>LeetCode Multi-Language AST Execution Engine</span>
+        <footer className="px-8 py-3 bg-[#141414] border-t border-[#2a2a2a] text-[11px] text-[#666666] flex items-center justify-between">
+          <span>VisualCode • LeetCode Multi-Language AST Execution Engine</span>
+          <div className="flex items-center gap-1.5 text-[#8a8a8e]">
+            <Terminal className="w-3.5 h-3.5 text-[#ffa116]" />
+            <span>Python / Java / C++ AST Tracer</span>
           </div>
         </footer>
       </div>
