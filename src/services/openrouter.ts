@@ -1,3 +1,4 @@
+import { jsonrepair } from 'jsonrepair';
 import type { ExecutionAnalysisResult, Language, ProblemContext } from '../types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -11,59 +12,42 @@ export function setApiKey(key: string): void {
   localStorage.setItem('visualcode_openrouter_key', key.trim());
 }
 
-function repairJson(str: string): any {
-  // 1. Direct try
+function parseAndRepairJson(rawContent: string): any {
+  const trimmed = rawContent.trim();
+
+  // 1. Direct standard parse
   try {
-    return JSON.parse(str.trim());
+    return JSON.parse(trimmed);
   } catch {}
 
-  // 2. Extract block
-  const block = str.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  if (block) {
-    try {
-      return JSON.parse(block[1].trim());
-    } catch {}
-  }
+  // 2. Extract content between markdown code blocks
+  const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  const targetStr = codeBlockMatch ? codeBlockMatch[1].trim() : trimmed;
 
-  // 3. Slice from first '{' to last '}'
-  const first = str.indexOf('{');
-  const last = str.lastIndexOf('}');
-  if (first !== -1 && last !== -1 && last > first) {
-    const sliced = str.slice(first, last + 1);
-    try {
-      return JSON.parse(sliced);
-    } catch {}
+  try {
+    return JSON.parse(targetStr);
+  } catch {}
 
-    // 4. Sanitize unescaped newlines/tabs inside string literals
-    try {
-      const sanitized = sliced
-        .replace(/(?<!\\)\r?\n(?=(?:(?:[^"]*"){2})*[^"]*"[^"]*$)/g, '\\n')
-        .replace(/(?<!\\)\t(?=(?:(?:[^"]*"){2})*[^"]*"[^"]*$)/g, '\\t');
-      return JSON.parse(sanitized);
-    } catch {}
-  }
-
-  // 5. Fallback: if ends prematurely, close open array and objects
-  if (first !== -1) {
-    let partial = str.slice(first);
-    // Remove trailing commas
-    partial = partial.replace(/,\s*([}\]])/g, '$1').replace(/,\s*$/, '');
-    const openBraces = (partial.match(/{/g) || []).length;
-    const closeBraces = (partial.match(/}/g) || []).length;
-    const openBrackets = (partial.match(/\[/g) || []).length;
-    const closeBrackets = (partial.match(/]/g) || []).length;
-
-    for (let i = 0; i < openBrackets - closeBrackets; i++) partial += ']';
-    for (let i = 0; i < openBraces - closeBraces; i++) partial += '}';
-
-    try {
-      return JSON.parse(partial);
-    } catch (e: any) {
-      console.error('Partial JSON repair failed:', e);
+  // 3. Use dedicated jsonrepair library for unescaped characters, trailing commas, missing quotes/brackets
+  try {
+    const repaired = jsonrepair(targetStr);
+    return JSON.parse(repaired);
+  } catch (err1) {
+    // 4. Substring slicing from first '{' to last '}'
+    const start = targetStr.indexOf('{');
+    const end = targetStr.lastIndexOf('}');
+    if (start !== -1 && end !== -1 && end > start) {
+      const sliced = targetStr.slice(start, end + 1);
+      try {
+        const repairedSliced = jsonrepair(sliced);
+        return JSON.parse(repairedSliced);
+      } catch (err2) {
+        console.error('jsonrepair failed on slice:', err2);
+      }
     }
   }
 
-  throw new Error(`Failed to parse AI response as JSON.`);
+  throw new Error('Could not parse AI response. Please try re-running.');
 }
 
 async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true): Promise<any> {
@@ -84,7 +68,7 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
       messages,
       response_format: jsonMode ? { type: 'json_object' } : undefined,
       temperature: 0.1,
-      max_tokens: 4500,
+      max_tokens: 6000,
     }),
   });
 
@@ -100,7 +84,7 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
   }
 
   if (jsonMode) {
-    return repairJson(rawContent);
+    return parseAndRepairJson(rawContent);
   }
 
   return rawContent;
@@ -108,35 +92,35 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
 
 export async function fetchLeetCodeProblem(query: string): Promise<ProblemContext> {
   const prompt = `You are a LeetCode problem scraper and data structures expert.
-Given the user query (which can be a problem title like "Validate Binary Search Tree", a problem number like "98", a slug like "validate-binary-search-tree", or a brief concept), return the complete structured problem context.
+Given the user query (which can be a problem title like "Validate Binary Search Tree", a problem number like "98", a slug like "validate-binary-search-tree", or a concept), return the complete structured problem context.
 
 Query: "${query}"
 
-Respond with ONLY a JSON object matching this TypeScript structure:
+Respond with ONLY a valid JSON object matching this TypeScript structure:
 {
-  "title": string, // e.g. "98. Validate Binary Search Tree"
+  "title": string,
   "slug": string,
   "difficulty": "Easy" | "Medium" | "Hard",
-  "tags": string[], // e.g. ["Tree", "Depth-First Search", "Binary Search Tree", "Binary Tree"]
-  "description": string, // Detailed markdown description of the problem with clear problem rules
+  "tags": string[],
+  "description": string,
   "examples": [
     {
-      "input": string, // e.g. "root = [2,1,3]"
-      "output": string, // e.g. "true"
-      "explanation": string // optional explanation
+      "input": string,
+      "output": string,
+      "explanation": string
     }
   ],
-  "constraints": string[], // e.g. ["The number of nodes in the tree is in the range [1, 10^4].", "-2^31 <= Node.val <= 2^31 - 1"]
+  "constraints": string[],
   "starterCode": {
-    "python": string, // Standard LeetCode class Solution and helper TreeNode/ListNode definition comments
-    "java": string,   // Standard LeetCode class Solution with TreeNode/ListNode class comments
-    "cpp": string     // Standard LeetCode class Solution with TreeNode/ListNode struct comments
+    "python": string,
+    "java": string,
+    "cpp": string
   },
   "dataStructureType": "tree" | "bst" | "graph" | "linked_list" | "array" | "matrix" | "recursion"
 }`;
 
   const messages = [
-    { role: 'system', content: 'You generate exact, authentic LeetCode problem specifications in JSON format.' },
+    { role: 'system', content: 'You generate exact LeetCode problem specifications in clean JSON format.' },
     { role: 'user', content: prompt }
   ];
 
@@ -152,7 +136,7 @@ export async function analyzeAndTraceExecution(
   const activeInput = customInput || problem.examples[0]?.input || 'default test case';
   const expectedOutput = problem.examples[0]?.output || '';
 
-  const prompt = `You are a world-class code execution engine, compiler, and data structure visualizer for LeetCode problems in Python, Java, and C++.
+  const prompt = `You are a code execution simulator and AST visualizer for LeetCode problems in Python, Java, and C++.
 
 PROBLEM:
 Title: ${problem.title}
@@ -161,82 +145,64 @@ Description: ${problem.description}
 Test Input to Execute: ${activeInput}
 Expected Output: ${expectedOutput}
 
-USER IMPLEMENTATION (${language.toUpperCase()}):
+USER CODE (${language.toUpperCase()}):
 \`\`\`${language}
 ${code}
 \`\`\`
 
-YOUR TASKS:
-1. CLASSIFY THE ERROR into one of 4 types:
-   - 'syntax': The code has compiler errors, invalid syntax, missing semicolons/parentheses/colons/keywords, or invalid language constructs.
-   - 'semantic': The code compiles, but crashes during execution due to runtime issues (e.g. NullPointerException, segmentation fault, dereferencing None/null/nullptr, array out of bounds, division by zero, stack overflow/infinite recursion without base case).
-   - 'logical': The code runs to completion without crashing, but produces an INCORRECT return value, bad mutation, or wrong logic compared to what the problem requires.
-   - 'none': The code is completely correct and produces the exact expected output.
+INSTRUCTIONS:
+1. Classify error type:
+   - 'syntax': Unparseable, compiler/syntax errors, missing brackets/semicolons.
+   - 'semantic': Crashes during runtime (e.g. NullPointerException, out of bounds, stack overflow).
+   - 'logical': Runs without crashing, but output / state is incorrect.
+   - 'none': Correct logic and produces expected output.
 
-2. IF SYNTAX ERROR:
-   - Set "isExecutable": false
-   - Provide "errorClassification": { "type": "syntax", "title": "Syntax Error", "description": "exact details of what failed to parse", "line": line_number_if_known, "fixRecommendation": "how to fix it" }
-   - "steps": []
+2. Step-by-step Execution Trace:
+   - Provide between 4 to 15 concise key execution steps.
+   - Trace variables, call stack, and data structure state on each step.
+   - Keep string explanations clean and concise (1 sentence).
 
-3. IF SEMANTIC / LOGICAL / NONE (Executable):
-   - Set "isExecutable": true
-   - Trace step-by-step what the code ACTUALLY DOES on the given test input: "${activeInput}".
-   - Generate a detailed list of execution steps (between 5 to 30 steps showing key transitions, loops, recursive calls, pointer updates, and return values).
-   - Even if the code is WRONG or buggy, faithfully reflect the buggy state of the data structures as the code executes!
-   - For each step, include:
-     - "step": 1, 2, ...
-     - "line": line number in user code currently executing (1-indexed)
-     - "explanation": clear, beginner-friendly sentence of what is happening on this line (e.g., "Checking if root (val: 5) is null", "Updating curr.left pointer to node 3", "Pushing node (val: 2) onto call stack", "Returning false because 5 <= 5 violates strict BST property").
-     - "variables": map of current variable names and values (e.g. {"root": 5, "minVal": "-Infinity", "maxVal": 5, "res": false})
-     - "callStack": array of active frames: [{ "functionName": "isValidBST", "args": {"val": 5, "min": "-inf", "max": "inf"}, "depth": 1, "status": "running" }]
-     - Data Structure Visual State (fill the one that matches '${problem.dataStructureType}'):
-       - If 'tree' or 'bst': "treeState": {
-           "id": "1", "val": 2, "pointers": ["root", "curr"], "status": "active" | "visited" | "modified" | "inserted" | "deleted" | "target" | "default",
-           "left": { "id": "2", "val": 1, "pointers": ["p"], "status": "visited", "left": null, "right": null },
-           "right": { "id": "3", "val": 3, "pointers": [], "status": "default", "left": null, "right": null }
-         }
-       - If 'graph': "graphState": { "nodes": [{"id": "0", "label": "0", "status": "active", "pointers": ["u"]}], "edges": [{"id": "0-1", "source": "0", "target": "1", "status": "active", "isDirected": true}] }
-       - If 'linked_list': "linkedListState": [{"id": "node-1", "val": 1, "nextId": "node-2", "pointers": ["head", "curr"], "status": "active"}]
-       - If 'array' or 'matrix': "arrayState": [{"index": 0, "val": 2, "pointers": ["left", "i"], "status": "active"}]
-     - "stdout": string or null
-     - "returnValue": return value if returned on this step
-
-4. Provide final error classification with actual vs expected output and fix recommendation.
-
-RETURN ONLY VALID JSON matching:
+3. Return ONLY a valid JSON object in this format:
 {
   "errorClassification": {
     "type": "syntax" | "semantic" | "logical" | "none",
-    "title": string,
-    "description": string,
-    "line": number (or null),
-    "fixRecommendation": string,
+    "title": "Short title",
+    "description": "Clear error description",
+    "line": 1,
+    "fixRecommendation": "How to fix",
     "expectedOutput": "${expectedOutput}",
-    "actualOutput": string
+    "actualOutput": "Actual output"
   },
-  "isExecutable": boolean,
-  "totalSteps": number,
-  "summary": string,
+  "isExecutable": true,
+  "totalSteps": 5,
+  "summary": "Brief execution summary",
   "steps": [
     {
-      "step": number,
-      "line": number,
-      "explanation": string,
-      "variables": object,
-      "callStack": array,
-      "treeState": object or null,
-      "graphState": object or null,
-      "linkedListState": array or null,
-      "arrayState": array or null,
-      "matrixState": object or null,
-      "stdout": string or null,
-      "returnValue": any
+      "step": 1,
+      "line": 16,
+      "explanation": "Brief description of action",
+      "variables": { "root": 1 },
+      "callStack": [{ "functionName": "rightSideView", "args": { "root": 1 }, "depth": 1 }],
+      "treeState": {
+        "id": "1",
+        "val": 1,
+        "pointers": ["root", "curr"],
+        "status": "active",
+        "left": { "id": "2", "val": 2, "pointers": [], "status": "default", "left": null, "right": null },
+        "right": { "id": "3", "val": 3, "pointers": [], "status": "default", "left": null, "right": null }
+      },
+      "graphState": null,
+      "linkedListState": null,
+      "arrayState": null,
+      "matrixState": null,
+      "stdout": null,
+      "returnValue": null
     }
   ]
 }`;
 
   const messages = [
-    { role: 'system', content: 'You are an accurate code tracer and AST step-by-step visual execution simulator.' },
+    { role: 'system', content: 'You are a high-precision code tracer that always responds in valid, parsable JSON.' },
     { role: 'user', content: prompt }
   ];
 
