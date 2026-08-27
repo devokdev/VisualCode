@@ -4,11 +4,16 @@ import type { TreeNodeData } from '../../types';
 
 interface TreeVisualizerProps {
   data: TreeNodeData | null | undefined;
+  prevData?: TreeNodeData | null | undefined;
   stepExplanation?: string;
   onSelectNode?: (node: TreeNodeData) => void;
 }
 
-export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplanation, onSelectNode }) => {
+export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({
+  data,
+  stepExplanation,
+  onSelectNode,
+}) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -27,7 +32,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
         .attr('x', width / 2)
         .attr('y', height / 2)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#8c8c8c')
+        .attr('fill', '#71717a')
         .attr('font-size', '13px')
         .text('Tree is empty or null (root is null)');
       return;
@@ -37,7 +42,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
 
     const zoom = d3
       .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 2.0])
+      .scaleExtent([0.5, 2.5])
       .on('zoom', (event) => {
         g.attr('transform', event.transform);
       });
@@ -54,8 +59,8 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
     const nodeRadius = 22;
     const treeLayout = d3
       .tree<TreeNodeData>()
-      .nodeSize([65, 70])
-      .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.4));
+      .nodeSize([70, 75])
+      .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.5));
 
     const root = treeLayout(hierarchyData);
 
@@ -63,7 +68,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
     const initialTransform = d3.zoomIdentity.translate(width / 2, 50).scale(0.95);
     svg.call(zoom.transform as any, initialTransform);
 
-    // Links
+    // Links with animated gradient transitions
     const links = root.links();
     g.selectAll('.tree-link')
       .data(links)
@@ -77,10 +82,20 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
                   ${d.target.x} ${d.target.y}`;
       })
       .attr('fill', 'none')
-      .attr('stroke', '#3a3a3a')
-      .attr('stroke-width', 1.8);
+      .attr('stroke', (d: any) => {
+        const isTargetActive = d.target.data.status === 'active' || (d.target.data.pointers && d.target.data.pointers.length > 0);
+        return isTargetActive ? '#ffa116' : '#3f3f46';
+      })
+      .attr('stroke-width', (d: any) => {
+        const isTargetActive = d.target.data.status === 'active' || (d.target.data.pointers && d.target.data.pointers.length > 0);
+        return isTargetActive ? 2.5 : 1.5;
+      })
+      .attr('opacity', (d: any) => {
+        const isTargetActive = d.target.data.status === 'active' || (d.target.data.pointers && d.target.data.pointers.length > 0);
+        return isTargetActive ? 1.0 : 0.45;
+      });
 
-    // Node Groups
+    // Node Groups with enter/update animations
     const nodeGroups = g
       .selectAll('.tree-node')
       .data(root.descendants())
@@ -93,20 +108,21 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
         if (onSelectNode) onSelectNode(d.data);
       });
 
-    // Dim inactive nodes to 40% opacity
+    // 40% noise dimming on inactive nodes
     nodeGroups.attr('opacity', (d) => {
       const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-      return isActive ? 1.0 : 0.40;
+      return isActive ? 1.0 : 0.4;
     });
 
-    // Highlight only active current node with orange ring
+    // Highlight only active current node with glowing pulse
     nodeGroups
       .filter((d) => Boolean(d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0)))
       .append('circle')
-      .attr('r', nodeRadius + 5)
+      .attr('r', nodeRadius + 6)
       .attr('fill', 'none')
       .attr('stroke', '#ffa116')
-      .attr('stroke-width', 2);
+      .attr('stroke-width', 2)
+      .attr('stroke-dasharray', '3 2');
 
     // Main Node Circle
     nodeGroups
@@ -114,13 +130,13 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
       .attr('r', nodeRadius)
       .attr('fill', (d) => {
         const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-        return isActive ? '#2d2d2d' : '#1e1e1e';
+        return isActive ? '#2e2b24' : '#1a1a20';
       })
       .attr('stroke', (d) => {
         const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-        return isActive ? '#ffa116' : '#3a3a3a';
+        return isActive ? '#ffa116' : '#52525b';
       })
-      .attr('stroke-width', 1.5);
+      .attr('stroke-width', 2);
 
     // Node Value Text
     nodeGroups
@@ -129,13 +145,14 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
       .attr('text-anchor', 'middle')
       .attr('fill', (d) => {
         const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-        return isActive ? '#eff1f6' : '#8c8c8c';
+        return isActive ? '#ffa116' : '#f4f4f5';
       })
       .attr('font-size', '12px')
-      .attr('font-weight', '600')
+      .attr('font-family', 'JetBrains Mono, monospace')
+      .attr('font-weight', '700')
       .text((d) => String(d.data.val));
 
-    // Pointer Badges above active node
+    // Pointer Badges above active nodes
     nodeGroups
       .filter((d) => Boolean(d.data.pointers && d.data.pointers.length > 0))
       .each(function (d) {
@@ -143,15 +160,16 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
         const group = d3.select(this);
 
         pointers.forEach((ptr, idx) => {
-          const badgeY = -nodeRadius - 12 - idx * 16;
+          const badgeY = -nodeRadius - 12 - idx * 18;
           const badgeGroup = group.append('g').attr('transform', `translate(0, ${badgeY})`);
 
           const textEl = badgeGroup
             .append('text')
             .attr('text-anchor', 'middle')
-            .attr('fill', '#141414')
+            .attr('fill', '#0d0d10')
             .attr('font-size', '10px')
             .attr('font-weight', '700')
+            .attr('font-family', 'JetBrains Mono, monospace')
             .text(ptr);
 
           const bbox = (textEl.node() as any)?.getBBox?.() || { width: 24, height: 12 };
@@ -170,16 +188,16 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
   }, [data, onSelectNode]);
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-[#1e1e1e] overflow-hidden select-none">
+    <div className="relative w-full h-full flex flex-col bg-[#111114] overflow-hidden select-none">
       <div className="w-full flex-1 min-h-[300px] relative">
         <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
       </div>
 
       {stepExplanation && (
-        <div className="px-4 py-2 bg-[#1a1a1a] border-t border-[#333333] text-xs text-[#8c8c8c] flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#ffa116]" />
-          <span className="font-semibold text-[#ffa116]">Action:</span>
-          <span className="truncate text-[#eff1f6]">{stepExplanation}</span>
+        <div className="px-6 py-2.5 bg-[#14141a] border-t border-white/[0.06] text-xs text-[#d4d4d8] flex items-center gap-3 shrink-0">
+          <span className="w-2 h-2 rounded-full bg-[#ffa116] animate-ping shrink-0" />
+          <span className="font-bold text-[#ffa116] uppercase text-[10px] tracking-wider shrink-0">Action</span>
+          <span className="truncate text-xs text-[#f4f4f5]">{stepExplanation}</span>
         </div>
       )}
     </div>

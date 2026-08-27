@@ -1,10 +1,13 @@
 import React from 'react';
-import type { CallStackFrame } from '../../types';
-import { Box, Layers, Terminal } from 'lucide-react';
+import type { CallStackFrame, TraceStep } from '../../types';
+import { computeStateTransitionDiff } from '../../services/transitionDiff';
+import { Box, Layers, Terminal, ArrowRight } from 'lucide-react';
 
 interface DebugPanelProps {
   activeTab: 'variables' | 'callstack' | 'output';
   onSelectTab: (tab: 'variables' | 'callstack' | 'output') => void;
+  currentStep?: TraceStep | null;
+  prevStep?: TraceStep | null;
   variables?: Record<string, any>;
   callStack?: CallStackFrame[];
   stdout?: string;
@@ -15,15 +18,18 @@ interface DebugPanelProps {
 export const DebugPanel: React.FC<DebugPanelProps> = ({
   activeTab,
   onSelectTab,
-  variables,
+  currentStep,
+  prevStep,
   callStack,
   stdout,
   returnValue,
   selectedNodeVal,
 }) => {
+  const diff = computeStateTransitionDiff(currentStep, prevStep);
+
   return (
     <div className="h-full flex flex-col bg-[#141417]/95 select-none">
-      {/* Tab Navigation Header with Lucide Icons - No Emojis */}
+      {/* Tab Navigation Header */}
       <div className="flex items-center border-b border-white/[0.06] bg-[#1a1a1f] px-3">
         <button
           onClick={() => onSelectTab('variables')}
@@ -34,7 +40,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
           }`}
         >
           <Box className="w-3.5 h-3.5" />
-          <span>Variables</span>
+          <span>Variables Diff</span>
         </button>
 
         <button
@@ -64,7 +70,7 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
 
       {/* Tab Content Body */}
       <div className="flex-1 p-4 overflow-y-auto">
-        {/* Variables Tab */}
+        {/* Variables Diff Tab */}
         {activeTab === 'variables' && (
           <div className="space-y-3">
             {selectedNodeVal !== null && selectedNodeVal !== undefined && (
@@ -76,21 +82,45 @@ export const DebugPanel: React.FC<DebugPanelProps> = ({
               </div>
             )}
 
-            {!variables || Object.keys(variables).length === 0 ? (
+            {diff.variableDiffs.length === 0 ? (
               <div className="p-6 text-center text-xs text-[#71717a]">
-                No variables active at this step
+                No active variables at this step
               </div>
             ) : (
-              <div className="space-y-1.5">
-                {Object.entries(variables).map(([name, val]) => (
+              <div className="space-y-2">
+                {diff.variableDiffs.map((v) => (
                   <div
-                    key={name}
-                    className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#1a1a1f] text-xs border border-white/[0.04] hover:border-white/[0.08] transition-colors"
+                    key={v.name}
+                    className={`p-2.5 rounded-xl border text-xs font-mono transition-all ${
+                      v.hasChanged
+                        ? 'bg-[#2a241b] border-[#ffa116]/40 shadow-sm'
+                        : 'bg-[#1a1a1f] border-white/[0.04]'
+                    }`}
                   >
-                    <span className="font-mono text-[#ffa116] font-medium">{name}</span>
-                    <span className="font-mono text-[#f4f4f5] truncate max-w-[160px]">
-                      {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                    </span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-[#ffa116]">{v.name}</span>
+                      {v.hasChanged && (
+                        <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-[#ffa116]/20 text-[#ffa116]">
+                          {v.isNew ? 'New' : 'Mutated'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="text-[#f4f4f5] break-all">
+                      {v.hasChanged && v.prevVal !== undefined ? (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[#71717a] line-through text-[11px]">
+                            {typeof v.prevVal === 'object' ? JSON.stringify(v.prevVal) : String(v.prevVal)}
+                          </span>
+                          <ArrowRight className="w-3 h-3 text-[#ffa116]" />
+                          <span className="text-[#ffa116] font-bold">
+                            {typeof v.currentVal === 'object' ? JSON.stringify(v.currentVal) : String(v.currentVal)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span>{typeof v.currentVal === 'object' ? JSON.stringify(v.currentVal) : String(v.currentVal)}</span>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

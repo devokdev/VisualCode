@@ -13,11 +13,13 @@ import type { LinkedListNodeData } from '../../types';
 interface LinkedListVisualizerProps {
   linkedListState?: LinkedListNodeData[] | null;
   stepExplanation?: string;
+  variables?: Record<string, any>;
 }
 
 export const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({
   linkedListState,
   stepExplanation,
+  variables = {},
 }) => {
   const { nodes, edges } = useMemo(() => {
     if (!linkedListState || linkedListState.length === 0) {
@@ -27,23 +29,36 @@ export const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({
     const nList: Node[] = [];
     const eList: Edge[] = [];
 
+    // Collect all pointer names from variables pointing to node values/indices
     linkedListState.forEach((node, idx) => {
       const isActive = node.status === 'active';
-      const hasPointers = node.pointers && node.pointers.length > 0;
+      const pointers = [...(node.pointers || [])];
+
+      // Also map scalar pointer variables (e.g. curr, prev, fast, slow)
+      Object.entries(variables).forEach(([vName, vVal]) => {
+        if (
+          (vVal === node.val || (typeof vVal === 'object' && vVal?.val === node.val)) &&
+          !pointers.includes(vName)
+        ) {
+          pointers.push(vName);
+        }
+      });
+
+      const hasPointers = pointers.length > 0;
 
       nList.push({
         id: node.id || `node-${idx}`,
-        position: { x: idx * 160 + 50, y: 120 },
+        position: { x: idx * 170 + 60, y: 130 },
         data: {
           label: (
             <div className="flex flex-col items-center">
               {/* Pointer Badges */}
               {hasPointers && (
-                <div className="flex gap-1 mb-1.5 -mt-6">
-                  {node.pointers!.map((p) => (
+                <div className="flex gap-1 mb-2 -mt-7">
+                  {pointers.map((p) => (
                     <span
                       key={p}
-                      className="px-2 py-0.5 text-[10px] font-bold rounded bg-[#ffa116] text-[#0d0d10] shadow-md"
+                      className="px-2 py-0.5 text-[10px] font-bold rounded bg-[#ffa116] text-[#0d0d10] shadow-md animate-bounce"
                     >
                       {p}
                     </span>
@@ -53,9 +68,9 @@ export const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({
 
               {/* Node Value Box */}
               <div
-                className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center border-2 transition-all shadow-md ${
+                className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center border-2 transition-all shadow-lg ${
                   isActive || hasPointers
-                    ? 'border-[#ffa116] bg-[#2e2b24] text-[#ffa116] font-bold shadow-[0_0_14px_rgba(255,161,22,0.3)]'
+                    ? 'border-[#ffa116] bg-[#2e2b24] text-[#ffa116] font-bold shadow-[0_0_16px_rgba(255,161,22,0.35)] scale-105'
                     : 'border-white/[0.12] bg-[#1a1a20] text-[#f4f4f5]'
                 }`}
               >
@@ -79,28 +94,28 @@ export const LinkedListVisualizer: React.FC<LinkedListVisualizerProps> = ({
           id: `edge-${idx}`,
           source: node.id || `node-${idx}`,
           target: nextId,
-          animated: isActive,
+          animated: isActive || hasPointers,
           style: {
-            stroke: isActive ? '#ffa116' : '#52525b',
+            stroke: isActive || hasPointers ? '#ffa116' : '#52525b',
             strokeWidth: 2.5,
           },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            color: isActive ? '#ffa116' : '#52525b',
+            color: isActive || hasPointers ? '#ffa116' : '#52525b',
           },
         });
       }
     });
 
     return { nodes: nList, edges: eList };
-  }, [linkedListState]);
+  }, [linkedListState, variables]);
 
   return (
     <div className="relative w-full h-full flex flex-col bg-[#111114] overflow-hidden select-none">
       <div className="flex-1 w-full h-full">
         {nodes.length === 0 ? (
           <div className="w-full h-full flex items-center justify-center text-xs text-[#71717a]">
-            Linked List is empty or uninitialized
+            Linked List / Object graph is uninitialized
           </div>
         ) : (
           <ReactFlow

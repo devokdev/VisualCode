@@ -114,12 +114,14 @@ export function App() {
   };
 
   const activeStep = traceResult?.steps?.[currentStepIndex];
+  const prevStep = currentStepIndex > 0 ? traceResult?.steps?.[currentStepIndex - 1] : undefined;
 
   const renderVisualizerContent = () => {
     return (
       <VisualizationEngine
         problem={problem}
         activeStep={activeStep}
+        prevStep={prevStep}
         onSelectTreeNode={(node) => {
           setSelectedNodeVal(node.val);
           setIsDrawerOpen(true);
@@ -337,6 +339,8 @@ export function App() {
                     <DebugPanel
                       activeTab={debugTab}
                       onSelectTab={setDebugTab}
+                      currentStep={activeStep}
+                      prevStep={prevStep}
                       variables={activeStep?.variables}
                       callStack={activeStep?.callStack}
                       stdout={activeStep?.stdout}
@@ -358,6 +362,8 @@ export function App() {
                     <DebugPanel
                       activeTab={debugTab}
                       onSelectTab={setDebugTab}
+                      currentStep={activeStep}
+                      prevStep={prevStep}
                       variables={activeStep?.variables}
                       callStack={activeStep?.callStack}
                       stdout={activeStep?.stdout}

@@ -9,12 +9,14 @@ import { Sparkles } from 'lucide-react';
 interface VisualizationEngineProps {
   problem: ProblemContext | null;
   activeStep?: TraceStep;
+  prevStep?: TraceStep;
   onSelectTreeNode?: (node: TreeNodeData) => void;
 }
 
 export const VisualizationEngine: React.FC<VisualizationEngineProps> = ({
   problem,
   activeStep,
+  prevStep,
   onSelectTreeNode,
 }) => {
   if (!problem) {
@@ -23,7 +25,7 @@ export const VisualizationEngine: React.FC<VisualizationEngineProps> = ({
         <Sparkles className="w-6 h-6 text-[#ffa116] mb-2" />
         <h4 className="text-sm font-semibold text-[#f4f4f5] mb-1">Visualizer Ready</h4>
         <p className="text-xs max-w-xs text-[#71717a]">
-          Click <strong className="text-[#ffa116]">Run</strong> to visualize your code execution.
+          Click <strong className="text-[#ffa116]">Run</strong> to visualize state transitions in your code.
         </p>
       </div>
     );
@@ -38,6 +40,7 @@ export const VisualizationEngine: React.FC<VisualizationEngineProps> = ({
     return (
       <TreeVisualizer
         data={activeStep?.treeState}
+        prevData={prevStep?.treeState}
         stepExplanation={activeStep?.explanation}
         onSelectNode={onSelectTreeNode}
       />
@@ -53,6 +56,7 @@ export const VisualizationEngine: React.FC<VisualizationEngineProps> = ({
       <LinkedListVisualizer
         linkedListState={activeStep?.linkedListState}
         stepExplanation={activeStep?.explanation}
+        variables={activeStep?.variables}
       />
     );
   }
@@ -70,9 +74,11 @@ export const VisualizationEngine: React.FC<VisualizationEngineProps> = ({
     );
   }
 
-  // 4. Default: Arrays / Matrices / DP / Two-Pointers (Framer Motion)
+  // 4. Default: Arrays / Matrices / DP / Swaps (Framer Motion State Transition Engine)
   return (
     <ArrayVisualizer
+      currentStep={activeStep}
+      prevStep={prevStep}
       arrayState={activeStep?.arrayState}
       matrixState={activeStep?.matrixState}
       variables={activeStep?.variables}
