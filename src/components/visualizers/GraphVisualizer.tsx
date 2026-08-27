@@ -1,6 +1,11 @@
 import React, { useEffect, useRef } from 'react';
 import cytoscape from 'cytoscape';
+import dagre from 'cytoscape-dagre';
 import type { GraphState } from '../../types';
+
+try {
+  cytoscape.use(dagre);
+} catch {}
 
 interface GraphVisualizerProps {
   data: GraphState | null | undefined;
@@ -57,80 +62,71 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ data, stepExpl
         {
           selector: 'node',
           style: {
-            'background-color': '#1e293b',
-            'border-color': '#64748b',
+            'background-color': '#1a1a20',
+            'border-color': '#52525b',
             'border-width': 2,
             'label': 'data(label)',
-            'color': '#f8fafc',
+            'color': '#f4f4f5',
+            'font-family': 'JetBrains Mono, monospace',
+            'font-size': '12px',
             'text-valign': 'center',
             'text-halign': 'center',
-            'font-size': '12px',
-            'font-weight': 'bold',
-            'width': 44,
-            'height': 44,
             'text-wrap': 'wrap',
+            'width': '48px',
+            'height': '48px',
           },
         },
         {
           selector: 'node[status = "active"]',
           style: {
-            'background-color': '#0284c7',
-            'border-color': '#38bdf8',
+            'background-color': '#2e2b24',
+            'border-color': '#ffa116',
             'border-width': 3,
-            'color': '#ffffff',
+            'color': '#ffa116',
+            'font-weight': 'bold',
           },
         },
         {
           selector: 'node[status = "visited"]',
           style: {
-            'background-color': '#334155',
-            'border-color': '#475569',
-          },
-        },
-        {
-          selector: 'node[status = "target"]',
-          style: {
-            'background-color': '#d97706',
-            'border-color': '#fbbf24',
+            'background-color': '#0d261e',
+            'border-color': '#10b981',
+            'color': '#10b981',
           },
         },
         {
           selector: 'edge',
           style: {
             'width': 2,
-            'line-color': '#475569',
-            'target-arrow-color': '#475569',
+            'line-color': '#52525b',
+            'target-arrow-color': '#52525b',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'label': 'data(label)',
-            'color': '#94a3b8',
+            'color': '#71717a',
             'font-size': '10px',
-            'text-background-color': '#0f172a',
-            'text-background-opacity': 0.8,
-            'text-background-padding': '2px',
           },
         },
         {
           selector: 'edge[status = "active"]',
           style: {
-            'line-color': '#38bdf8',
-            'target-arrow-color': '#38bdf8',
             'width': 3,
+            'line-color': '#ffa116',
+            'target-arrow-color': '#ffa116',
           },
         },
         {
-          selector: 'edge[status = "traversed"]',
+          selector: 'edge[status = "visited"]',
           style: {
-            'line-color': '#34d399',
-            'target-arrow-color': '#34d399',
-            'width': 2.5,
+            'line-color': '#10b981',
+            'target-arrow-color': '#10b981',
           },
         },
       ],
       layout: {
         name: 'cose',
-        animate: false,
-        padding: 40,
+        animate: true,
+        padding: 50,
       } as any,
     });
 
@@ -142,33 +138,16 @@ export const GraphVisualizer: React.FC<GraphVisualizerProps> = ({ data, stepExpl
   }, [data]);
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-slate-950/70 rounded-xl border border-slate-800/80 overflow-hidden select-none">
-      <div className="absolute top-3 left-4 z-10 flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/90 px-2.5 py-1 rounded-md border border-slate-800 shadow-sm backdrop-blur">
-          🕸️ Graph Structure
-        </span>
-        {data && data.nodes?.length > 0 && (
-          <span className="text-xs text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800/60">
-            Drag nodes • Zoom/Pan
-          </span>
-        )}
-      </div>
-
-      <div className="w-full flex-1 min-h-[360px] relative">
-        {(!data || !data.nodes || data.nodes.length === 0) ? (
-          <div className="w-full h-full flex items-center justify-center text-slate-500 text-sm">
-            Graph is empty or not initialized
-          </div>
-        ) : (
-          <div ref={containerRef} className="w-full h-full" />
-        )}
+    <div className="relative w-full h-full flex flex-col bg-[#111114] overflow-hidden select-none">
+      <div className="w-full flex-1 min-h-[300px] relative">
+        <div ref={containerRef} className="w-full h-full" />
       </div>
 
       {stepExplanation && (
-        <div className="px-4 py-2 bg-slate-900/90 border-t border-slate-800/80 text-xs text-slate-300 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
-          <span className="font-medium text-sky-300">Action:</span>
-          <span className="truncate">{stepExplanation}</span>
+        <div className="px-6 py-2.5 bg-[#14141a] border-t border-white/[0.06] text-xs text-[#d4d4d8] flex items-center gap-3 shrink-0">
+          <span className="w-2 h-2 rounded-full bg-[#ffa116] animate-ping shrink-0" />
+          <span className="font-bold text-[#ffa116] uppercase text-[10px] tracking-wider shrink-0">Action</span>
+          <span className="truncate text-xs text-[#f4f4f5]">{stepExplanation}</span>
         </div>
       )}
     </div>

@@ -8,9 +8,7 @@ import { CodeEditor } from './components/CodeEditor';
 import { CompactErrorBanner } from './components/CompactErrorBanner';
 import { FloatingTimeline } from './components/FloatingTimeline';
 import { DebugPanel } from './components/visualizers/DebugPanel';
-import { TreeVisualizer } from './components/visualizers/TreeVisualizer';
-import { GraphVisualizer } from './components/visualizers/GraphVisualizer';
-import { SequenceVisualizer } from './components/visualizers/SequenceVisualizer';
+import { VisualizationEngine } from './components/visualizers/VisualizationEngine';
 import { ProblemsListView } from './components/ProblemsListView';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { ProblemStatementModal } from './components/ProblemStatementModal';
@@ -118,38 +116,15 @@ export function App() {
   const activeStep = traceResult?.steps?.[currentStepIndex];
 
   const renderVisualizerContent = () => {
-    if (!problem) return null;
-
-    if (problem.dataStructureType === 'tree' || problem.dataStructureType === 'bst') {
-      return (
-        <TreeVisualizer
-          data={activeStep?.treeState}
-          stepExplanation={activeStep?.explanation}
-          onSelectNode={(node) => {
-            setSelectedNodeVal(node.val);
-            setIsDrawerOpen(true);
-            setDebugTab('variables');
-          }}
-        />
-      );
-    }
-
-    if (problem.dataStructureType === 'graph') {
-      return (
-        <GraphVisualizer
-          data={activeStep?.graphState}
-          stepExplanation={activeStep?.explanation}
-        />
-      );
-    }
-
     return (
-      <SequenceVisualizer
-        linkedListState={activeStep?.linkedListState}
-        arrayState={activeStep?.arrayState}
-        matrixState={activeStep?.matrixState}
-        stepExplanation={activeStep?.explanation}
-        variables={activeStep?.variables}
+      <VisualizationEngine
+        problem={problem}
+        activeStep={activeStep}
+        onSelectTreeNode={(node) => {
+          setSelectedNodeVal(node.val);
+          setIsDrawerOpen(true);
+          setDebugTab('variables');
+        }}
       />
     );
   };
