@@ -41,13 +41,13 @@ export const FloatingTimeline: React.FC<FloatingTimelineProps> = ({
   }, [isPlaying, currentStep, totalSteps, speed, onStepForward, onPlayToggle]);
 
   return (
-    <div className="h-12 bg-[#221D1A] border-t border-[#3D322A] px-6 flex items-center justify-between gap-6 shrink-0 select-none">
+    <div className="h-10 bg-[#1a1a1a] border-t border-[#333333] px-4 flex items-center justify-between gap-4 shrink-0 select-none">
       {/* Play / Back / Forward */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex items-center gap-1">
         <button
           onClick={onReset}
           disabled={currentStep === 0}
-          className="p-1 rounded text-[#9E948C] hover:text-[#EAE5DF] disabled:opacity-30 transition-colors"
+          className="p-1 rounded text-[#8c8c8c] hover:text-[#eff1f6] disabled:opacity-30 transition-colors"
           title="Reset"
         >
           <RotateCcw className="w-3.5 h-3.5" />
@@ -56,31 +56,31 @@ export const FloatingTimeline: React.FC<FloatingTimelineProps> = ({
         <button
           onClick={onStepBack}
           disabled={currentStep === 0}
-          className="p-1 rounded text-[#9E948C] hover:text-[#EAE5DF] disabled:opacity-30 transition-colors"
+          className="p-1 rounded text-[#8c8c8c] hover:text-[#eff1f6] disabled:opacity-30 transition-colors"
           title="Step Back"
         >
-          <SkipBack className="w-4 h-4" />
+          <SkipBack className="w-3.5 h-3.5" />
         </button>
 
         <button
           onClick={onPlayToggle}
-          className="p-1.5 rounded-lg bg-[#B38A4A] hover:bg-[#C59B58] text-[#171412] font-bold transition-all shadow-sm flex items-center justify-center mx-1"
+          className="p-1.5 rounded bg-[#ffa116] hover:bg-[#ffb23d] text-[#141414] font-bold transition-all shadow-sm flex items-center justify-center mx-1"
           title={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? (
-            <Pause className="w-3.5 h-3.5 fill-[#171412]" />
+            <Pause className="w-3 h-3 fill-[#141414]" />
           ) : (
-            <Play className="w-3.5 h-3.5 fill-[#171412]" />
+            <Play className="w-3 h-3 fill-[#141414]" />
           )}
         </button>
 
         <button
           onClick={onStepForward}
           disabled={currentStep >= totalSteps - 1}
-          className="p-1 rounded text-[#9E948C] hover:text-[#EAE5DF] disabled:opacity-30 transition-colors"
+          className="p-1 rounded text-[#8c8c8c] hover:text-[#eff1f6] disabled:opacity-30 transition-colors"
           title="Step Forward"
         >
-          <SkipForward className="w-4 h-4" />
+          <SkipForward className="w-3.5 h-3.5" />
         </button>
       </div>
 
@@ -93,24 +93,24 @@ export const FloatingTimeline: React.FC<FloatingTimelineProps> = ({
           value={currentStep}
           onChange={(e) => onScrub(Number(e.target.value))}
           disabled={totalSteps <= 1}
-          className="w-full h-1 bg-[#171412] rounded appearance-none cursor-pointer accent-[#B38A4A]"
+          className="w-full h-1 bg-[#262626] rounded appearance-none cursor-pointer accent-[#ffa116]"
         />
 
-        <span className="text-xs font-mono font-medium text-[#9E948C] whitespace-nowrap">
-          Step <strong className="text-[#EAE5DF]">{totalSteps > 0 ? currentStep + 1 : 0}</strong> / {totalSteps}
+        <span className="text-xs font-mono text-[#8c8c8c] whitespace-nowrap">
+          Step <strong className="text-[#eff1f6]">{totalSteps > 0 ? currentStep + 1 : 0}</strong> / {totalSteps}
         </span>
       </div>
 
       {/* Speed Controls */}
-      <div className="flex items-center gap-1 bg-[#171412] p-0.5 rounded-md border border-[#3D322A]">
+      <div className="flex items-center gap-0.5 bg-[#242424] p-0.5 rounded border border-[#333333]">
         {[0.5, 1, 2].map((s) => (
           <button
             key={s}
             onClick={() => onSpeedChange(s)}
-            className={`px-2 py-0.5 text-[10px] font-mono rounded transition-colors ${
+            className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
               speed === s
-                ? 'bg-[#2A2421] text-[#B38A4A] font-bold'
-                : 'text-[#6B625B] hover:text-[#9E948C]'
+                ? 'bg-[#333333] text-[#ffa116] font-bold'
+                : 'text-[#8c8c8c] hover:text-[#eff1f6]'
             }`}
           >
             {s}×

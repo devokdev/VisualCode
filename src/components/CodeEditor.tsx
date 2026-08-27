@@ -21,35 +21,35 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const monacoLanguage = language === 'python' ? 'python' : language === 'java' ? 'java' : 'cpp';
 
   const handleEditorDidMount = (_editor: any, monaco: any) => {
-    monaco.editor.defineTheme('vintageEspresso', {
+    monaco.editor.defineTheme('leetCodeDark', {
       base: 'vs-dark',
       inherit: true,
       rules: [
-        { token: 'comment', foreground: '6B625B', fontStyle: 'italic' },
-        { token: 'keyword', foreground: 'B38A4A', fontStyle: 'bold' },
-        { token: 'string', foreground: '66734F' },
-        { token: 'number', foreground: 'C59B58' },
-        { token: 'type', foreground: 'EAE5DF' },
+        { token: 'comment', foreground: '8c8c8c', fontStyle: 'italic' },
+        { token: 'keyword', foreground: 'ffa116', fontStyle: 'bold' },
+        { token: 'string', foreground: '2cbb5d' },
+        { token: 'number', foreground: '46c6c2' },
+        { token: 'type', foreground: 'eff1f6' },
       ],
       colors: {
-        'editor.background': '#171412',
-        'editor.lineHighlightBackground': '#221D1A',
-        'editorLineNumber.foreground': '#5E4A3B',
-        'editorLineNumber.activeForeground': '#B38A4A',
-        'editorCursor.foreground': '#B38A4A',
+        'editor.background': '#1a1a1a',
+        'editor.lineHighlightBackground': '#242424',
+        'editorLineNumber.foreground': '#5c5c5c',
+        'editorLineNumber.activeForeground': '#ffa116',
+        'editorCursor.foreground': '#ffa116',
       },
     });
-    monaco.editor.setTheme('vintageEspresso');
+    monaco.editor.setTheme('leetCodeDark');
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#171412] relative select-none">
+    <div className="flex flex-col h-full bg-[#1a1a1a] relative select-none">
       {/* Editor Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#221D1A] border-b border-[#3D322A]">
+      <div className="flex items-center justify-between px-4 py-2 bg-[#242424] border-b border-[#333333]">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-mono font-medium text-[#9E948C] uppercase">{language}</span>
+          <span className="text-xs font-mono font-semibold text-[#8c8c8c] uppercase">{language}</span>
           {activeLine && (
-            <span className="text-[11px] font-mono bg-[#2A2421] text-[#B38A4A] px-2 py-0.5 rounded border border-[#3D322A]">
+            <span className="text-[11px] font-mono bg-[#333333] text-[#ffa116] px-2 py-0.5 rounded border border-[#484848]">
               Line {activeLine}
             </span>
           )}
@@ -58,7 +58,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         <button
           onClick={onResetStarter}
           title="Reset Code Template"
-          className="text-xs text-[#9E948C] hover:text-[#EAE5DF] flex items-center gap-1 transition-colors"
+          className="text-xs text-[#8c8c8c] hover:text-[#eff1f6] flex items-center gap-1 transition-colors"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Reset</span>

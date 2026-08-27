@@ -140,7 +140,7 @@ export function App() {
   };
 
   return (
-    <div className="h-screen w-screen bg-[#171412] text-[#EAE5DF] flex flex-col font-sans overflow-hidden">
+    <div className="h-screen w-screen bg-[#141414] text-[#eff1f6] flex flex-col font-sans overflow-hidden">
       {/* 1. Top Bar: Search • Language • API Key • Debug Drawer • Run */}
       <TopBar
         problem={problem}
@@ -169,15 +169,15 @@ export function App() {
         <div className="flex-1 flex flex-col min-h-0 relative">
           {/* Compact Error Banner if exists */}
           {traceResult?.errorClassification && (
-            <div className="px-6 py-2 bg-[#221D1A] border-b border-[#3D322A]">
+            <div className="px-4 py-2 bg-[#1a1a1a] border-b border-[#333333]">
               <CompactErrorBanner error={traceResult.errorClassification} />
             </div>
           )}
 
-          {/* 3-Panel Core IDE: Left Editor (60%) | Right Visualizer Tabs (40%) */}
+          {/* 3-Panel Core IDE: Left Editor (58%) | Right Visualizer Tabs (42%) */}
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Left Panel: Monaco Code Editor */}
-            <div className="w-[58%] h-full flex flex-col border-r border-[#3D322A] min-w-0">
+            <div className="w-[58%] h-full flex flex-col border-r border-[#333333] min-w-0">
               <CodeEditor
                 code={code}
                 onChange={(val) => setCode(val || '')}
@@ -188,82 +188,84 @@ export function App() {
             </div>
 
             {/* Right Panel: Tabbed Visualizer & Debugger */}
-            <div className="flex-1 h-full flex flex-col bg-[#221D1A] min-w-0 relative">
-              {/* Right Panel Header Tabs (Item #2: Hide debugging info behind tabs) */}
-              <div className="h-10 border-b border-[#3D322A] bg-[#1C1815] px-4 flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setVisualizerTab('tree')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                      visualizerTab === 'tree'
-                        ? 'bg-[#2A2421] text-[#B38A4A]'
-                        : 'text-[#9E948C] hover:text-[#EAE5DF]'
-                    }`}
-                  >
-                    🌳 Visualizer
-                  </button>
+            <div className="flex-1 h-full flex flex-col bg-[#1e1e1e] min-w-0 relative">
+              {/* Right Panel Header Tabs - Only visible when drawer is CLOSED */}
+              {!isDrawerOpen && (
+                <div className="h-9 border-b border-[#333333] bg-[#242424] px-3 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setVisualizerTab('tree')}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        visualizerTab === 'tree'
+                          ? 'bg-[#333333] text-[#ffa116]'
+                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                      }`}
+                    >
+                      🌳 Visualizer
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setVisualizerTab('debug');
-                      setDebugTab('variables');
-                    }}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                      visualizerTab === 'debug' && debugTab === 'variables'
-                        ? 'bg-[#2A2421] text-[#B38A4A]'
-                        : 'text-[#9E948C] hover:text-[#EAE5DF]'
-                    }`}
-                  >
-                    📦 Variables
-                  </button>
+                    <button
+                      onClick={() => {
+                        setVisualizerTab('debug');
+                        setDebugTab('variables');
+                      }}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        visualizerTab === 'debug' && debugTab === 'variables'
+                          ? 'bg-[#333333] text-[#ffa116]'
+                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                      }`}
+                    >
+                      📦 Variables
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setVisualizerTab('debug');
-                      setDebugTab('callstack');
-                    }}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                      visualizerTab === 'debug' && debugTab === 'callstack'
-                        ? 'bg-[#2A2421] text-[#B38A4A]'
-                        : 'text-[#9E948C] hover:text-[#EAE5DF]'
-                    }`}
-                  >
-                    🧵 Call Stack
-                  </button>
+                    <button
+                      onClick={() => {
+                        setVisualizerTab('debug');
+                        setDebugTab('callstack');
+                      }}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        visualizerTab === 'debug' && debugTab === 'callstack'
+                          ? 'bg-[#333333] text-[#ffa116]'
+                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                      }`}
+                    >
+                      🧵 Call Stack
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setVisualizerTab('debug');
-                      setDebugTab('output');
-                    }}
-                    className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
-                      visualizerTab === 'debug' && debugTab === 'output'
-                        ? 'bg-[#2A2421] text-[#B38A4A]'
-                        : 'text-[#9E948C] hover:text-[#EAE5DF]'
-                    }`}
-                  >
-                    📝 Output
-                  </button>
+                    <button
+                      onClick={() => {
+                        setVisualizerTab('debug');
+                        setDebugTab('output');
+                      }}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        visualizerTab === 'debug' && debugTab === 'output'
+                          ? 'bg-[#333333] text-[#ffa116]'
+                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                      }`}
+                    >
+                      📝 Output
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-[#8c8c8c]">
+                    {problem && (
+                      <span className="truncate max-w-[200px]">
+                        {problem.title}
+                      </span>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2 text-xs text-[#6B625B]">
-                  {problem && (
-                    <span className="truncate max-w-[200px]">
-                      {problem.title}
-                    </span>
-                  )}
-                </div>
-              </div>
+              )}
 
               {/* Visualizer / Debugger Body */}
               <div className="flex-1 min-h-0 relative">
-                {visualizerTab === 'tree' ? (
+                {isDrawerOpen || visualizerTab === 'tree' ? (
                   renderVisualizerContent() || (
-                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-[#9E948C]">
-                      <Sparkles className="w-6 h-6 text-[#B38A4A] mb-2" />
-                      <h4 className="text-sm font-semibold text-[#EAE5DF] mb-1">Visualizer Ready</h4>
-                      <p className="text-xs max-w-xs text-[#6B625B]">
-                        Click <strong className="text-[#B38A4A]">Run</strong> in the top bar to step through code execution.
+                    <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-[#8c8c8c]">
+                      <Sparkles className="w-6 h-6 text-[#ffa116] mb-2" />
+                      <h4 className="text-sm font-semibold text-[#eff1f6] mb-1">Visualizer Ready</h4>
+                      <p className="text-xs max-w-xs text-[#8c8c8c]">
+                        Click <strong className="text-[#ffa116]">Run</strong> in the top bar to step through code execution.
                       </p>
                     </div>
                   )
@@ -281,9 +283,9 @@ export function App() {
               </div>
             </div>
 
-            {/* Collapsible Debug Drawer (Item #6: Progressive Disclosure) */}
+            {/* Collapsible Debug Drawer */}
             {isDrawerOpen && (
-              <div className="w-80 h-full border-l border-[#3D322A] bg-[#221D1A] flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+              <div className="w-80 h-full border-l border-[#333333] bg-[#1e1e1e] flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
                 <DebugPanel
                   activeTab={debugTab}
                   onSelectTab={setDebugTab}
@@ -297,7 +299,7 @@ export function App() {
             )}
           </div>
 
-          {/* Bottom Floating Timeline Bar (Item #4: Single clean playback strip) */}
+          {/* Bottom Floating Timeline Bar */}
           <FloatingTimeline
             currentStep={currentStepIndex}
             totalSteps={traceResult?.steps?.length || 0}

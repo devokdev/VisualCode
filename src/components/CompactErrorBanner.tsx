@@ -17,29 +17,27 @@ export const CompactErrorBanner: React.FC<CompactErrorBannerProps> = ({ error })
 
   return (
     <div
-      className={`px-4 py-2.5 rounded-xl border text-xs transition-all ${
+      className={`px-3 py-1.5 rounded-lg border text-xs transition-all ${
         isSuccess
-          ? 'bg-[#66734F]/15 border-[#66734F]/40 text-[#EAE5DF]'
-          : 'bg-[#A3543A]/15 border-[#A3543A]/40 text-[#EAE5DF]'
+          ? 'bg-[#2cbb5d]/10 border-[#2cbb5d]/40 text-[#eff1f6]'
+          : 'bg-[#ef4743]/10 border-[#ef4743]/40 text-[#eff1f6]'
       }`}
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
           {isSuccess ? (
-            <CheckCircle2 className="w-4 h-4 text-[#66734F] shrink-0" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#2cbb5d] shrink-0" />
           ) : (
-            <AlertCircle className="w-4 h-4 text-[#A3543A] shrink-0" />
+            <AlertCircle className="w-3.5 h-3.5 text-[#ef4743] shrink-0" />
           )}
 
           <span
-            className={`font-semibold px-2 py-0.5 rounded text-[11px] uppercase tracking-wide ${
+            className={`font-semibold px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide ${
               isSuccess
-                ? 'bg-[#66734F]/30 text-[#B8C99E]'
+                ? 'bg-[#2cbb5d]/20 text-[#2cbb5d]'
                 : isLogical
-                ? 'bg-[#A3543A]/30 text-[#F0A994]'
-                : isSemantic
-                ? 'bg-[#A3543A]/40 text-[#F0A994]'
-                : 'bg-[#A3543A]/50 text-[#F0A994]'
+                ? 'bg-[#ffa116]/20 text-[#ffa116]'
+                : 'bg-[#ef4743]/20 text-[#ef4743]'
             }`}
           >
             {isSuccess
@@ -51,18 +49,18 @@ export const CompactErrorBanner: React.FC<CompactErrorBannerProps> = ({ error })
               : 'Syntax Error'}
           </span>
 
-          <span className="font-medium text-[#EAE5DF]">{error.title}</span>
+          <span className="font-semibold text-[#eff1f6]">{error.title}</span>
 
           {error.line && (
-            <span className="font-mono text-[10px] text-[#9E948C] bg-[#171412] px-1.5 py-0.5 rounded border border-[#3D322A]">
+            <span className="font-mono text-[10px] text-[#8c8c8c] bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#333333]">
               Line {error.line}
             </span>
           )}
 
           {isLogical && (error.expectedOutput || error.actualOutput) && (
-            <span className="font-mono text-[11px] text-[#9E948C]">
-              Expected <span className="text-[#66734F] font-bold">{error.expectedOutput}</span> • Got{' '}
-              <span className="text-[#A3543A] font-bold">{error.actualOutput || 'wrong'}</span>
+            <span className="font-mono text-[11px] text-[#8c8c8c]">
+              Expected <span className="text-[#2cbb5d] font-bold">{error.expectedOutput}</span> • Got{' '}
+              <span className="text-[#ef4743] font-bold">{error.actualOutput || 'wrong'}</span>
             </span>
           )}
         </div>
@@ -70,7 +68,7 @@ export const CompactErrorBanner: React.FC<CompactErrorBannerProps> = ({ error })
         {error.fixRecommendation && (
           <button
             onClick={() => setShowFix(!showFix)}
-            className="flex items-center gap-1 text-[11px] font-semibold text-[#B38A4A] hover:underline"
+            className="flex items-center gap-1 text-[11px] font-semibold text-[#ffa116] hover:underline"
           >
             <span>{showFix ? 'Hide Fix' : 'Show Fix'}</span>
             {showFix ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -79,14 +77,18 @@ export const CompactErrorBanner: React.FC<CompactErrorBannerProps> = ({ error })
       </div>
 
       {/* Expandable Fix Drawer */}
-      {showFix && error.fixRecommendation && (
-        <div className="mt-2 pt-2 border-t border-[#3D322A]/60 text-[#D8D2CA] text-xs leading-relaxed flex items-start gap-2">
-          <span className="text-[#B38A4A] font-bold">Why?</span>
-          <span>{error.description}</span>
-          <div className="mt-1 text-[#B38A4A]">
-            <span className="font-semibold">Insight: </span>
-            {error.fixRecommendation}
+      {showFix && (
+        <div className="mt-2 pt-2 border-t border-[#333333] text-[#d4d4d4] text-xs leading-relaxed space-y-1">
+          <div>
+            <span className="text-[#ffa116] font-bold">Why? </span>
+            <span>{error.description}</span>
           </div>
+          {error.fixRecommendation && (
+            <div className="text-[#eff1f6]">
+              <span className="text-[#2cbb5d] font-bold">Insight: </span>
+              {error.fixRecommendation}
+            </div>
+          )}
         </div>
       )}
     </div>

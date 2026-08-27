@@ -27,7 +27,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
         .attr('x', width / 2)
         .attr('y', height / 2)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#6B625B')
+        .attr('fill', '#8c8c8c')
         .attr('font-size', '13px')
         .text('Tree is empty or null (root is null)');
       return;
@@ -77,7 +77,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
                   ${d.target.x} ${d.target.y}`;
       })
       .attr('fill', 'none')
-      .attr('stroke', '#3D322A')
+      .attr('stroke', '#3a3a3a')
       .attr('stroke-width', 1.8);
 
     // Node Groups
@@ -93,19 +93,19 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
         if (onSelectNode) onSelectNode(d.data);
       });
 
-    // Dim inactive nodes to 40% opacity (Item #5: Reduce visual noise)
+    // Dim inactive nodes to 40% opacity
     nodeGroups.attr('opacity', (d) => {
       const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-      return isActive ? 1.0 : 0.45;
+      return isActive ? 1.0 : 0.40;
     });
 
-    // Highlight only active current node with antique gold ring
+    // Highlight only active current node with orange ring
     nodeGroups
       .filter((d) => Boolean(d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0)))
       .append('circle')
       .attr('r', nodeRadius + 5)
       .attr('fill', 'none')
-      .attr('stroke', '#B38A4A')
+      .attr('stroke', '#ffa116')
       .attr('stroke-width', 2);
 
     // Main Node Circle
@@ -114,11 +114,11 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
       .attr('r', nodeRadius)
       .attr('fill', (d) => {
         const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-        return isActive ? '#2A2421' : '#1F1B18';
+        return isActive ? '#2d2d2d' : '#1e1e1e';
       })
       .attr('stroke', (d) => {
         const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-        return isActive ? '#B38A4A' : '#3D322A';
+        return isActive ? '#ffa116' : '#3a3a3a';
       })
       .attr('stroke-width', 1.5);
 
@@ -129,13 +129,13 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
       .attr('text-anchor', 'middle')
       .attr('fill', (d) => {
         const isActive = d.data.status === 'active' || (d.data.pointers && d.data.pointers.length > 0);
-        return isActive ? '#EAE5DF' : '#9E948C';
+        return isActive ? '#eff1f6' : '#8c8c8c';
       })
       .attr('font-size', '12px')
       .attr('font-weight', '600')
       .text((d) => String(d.data.val));
 
-    // Pointer Badges above active node only
+    // Pointer Badges above active node
     nodeGroups
       .filter((d) => Boolean(d.data.pointers && d.data.pointers.length > 0))
       .each(function (d) {
@@ -149,7 +149,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
           const textEl = badgeGroup
             .append('text')
             .attr('text-anchor', 'middle')
-            .attr('fill', '#171412')
+            .attr('fill', '#141414')
             .attr('font-size', '10px')
             .attr('font-weight', '700')
             .text(ptr);
@@ -164,22 +164,22 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
             .attr('width', bbox.width + padding * 2)
             .attr('height', 13)
             .attr('rx', 3)
-            .attr('fill', '#B38A4A');
+            .attr('fill', '#ffa116');
         });
       });
   }, [data, onSelectNode]);
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-[#221D1A] overflow-hidden select-none">
+    <div className="relative w-full h-full flex flex-col bg-[#1e1e1e] overflow-hidden select-none">
       <div className="w-full flex-1 min-h-[300px] relative">
         <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
       </div>
 
       {stepExplanation && (
-        <div className="px-4 py-2 bg-[#171412] border-t border-[#3D322A]/50 text-xs text-[#9E948C] flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#B38A4A]" />
-          <span className="font-semibold text-[#B38A4A]">Action:</span>
-          <span className="truncate text-[#EAE5DF]">{stepExplanation}</span>
+        <div className="px-4 py-2 bg-[#1a1a1a] border-t border-[#333333] text-xs text-[#8c8c8c] flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#ffa116]" />
+          <span className="font-semibold text-[#ffa116]">Action:</span>
+          <span className="truncate text-[#eff1f6]">{stepExplanation}</span>
         </div>
       )}
     </div>
