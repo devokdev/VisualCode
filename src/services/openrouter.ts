@@ -50,7 +50,7 @@ function parseAndRepairJson(rawContent: string): any {
   throw new Error('Could not parse AI response. Please try re-running.');
 }
 
-async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true): Promise<any> {
+async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 2500): Promise<any> {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('Missing API Key. Please click the "API Key" button at the top right to configure your OpenRouter API Key.');
@@ -68,7 +68,7 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
       messages,
       response_format: jsonMode ? { type: 'json_object' } : undefined,
       temperature: 0.1,
-      max_tokens: 6000,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -124,7 +124,7 @@ Respond with ONLY a valid JSON object matching this TypeScript structure:
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true);
+  return await callOpenRouter(messages, true, 1800);
 }
 
 export async function analyzeAndTraceExecution(
@@ -158,7 +158,7 @@ INSTRUCTIONS:
    - 'none': Correct logic and produces expected output.
 
 2. Step-by-step Execution Trace:
-   - Provide between 4 to 15 concise key execution steps.
+   - Provide between 4 to 12 concise key execution steps.
    - Trace variables, call stack, and data structure state on each step.
    - Keep string explanations clean and concise (1 sentence).
 
@@ -206,5 +206,5 @@ INSTRUCTIONS:
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true);
+  return await callOpenRouter(messages, true, 2800);
 }
