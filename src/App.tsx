@@ -12,6 +12,7 @@ import { GraphVisualizer } from './components/visualizers/GraphVisualizer';
 import { SequenceVisualizer } from './components/visualizers/SequenceVisualizer';
 import { ProblemsListView } from './components/ProblemsListView';
 import { ApiKeyModal } from './components/ApiKeyModal';
+import { ProblemStatementModal } from './components/ProblemStatementModal';
 import { Sparkles } from 'lucide-react';
 
 const DEFAULT_PROBLEM_QUERY = '199. Binary Tree Right Side View';
@@ -19,6 +20,7 @@ const DEFAULT_PROBLEM_QUERY = '199. Binary Tree Right Side View';
 export function App() {
   const [currentTab, setCurrentTab] = useState<'editor' | 'problems'>('editor');
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [isProblemModalOpen, setIsProblemModalOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [debugTab, setDebugTab] = useState<'variables' | 'callstack' | 'output'>('variables');
   const [selectedNodeVal, setSelectedNodeVal] = useState<string | number | null>(null);
@@ -34,7 +36,7 @@ export function App() {
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [speed, setSpeed] = useState<number>(1);
-  const [visualizerTab, setVisualizerTab] = useState<'tree' | 'debug'>('tree');
+  const [visualizerTab, setVisualizerTab] = useState<'tree' | 'problem' | 'debug'>('tree');
 
   // Initial Load
   useEffect(() => {
@@ -205,6 +207,17 @@ export function App() {
                     </button>
 
                     <button
+                      onClick={() => setVisualizerTab('problem')}
+                      className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
+                        visualizerTab === 'problem'
+                          ? 'bg-[#333333] text-[#ffa116]'
+                          : 'text-[#8c8c8c] hover:text-[#eff1f6]'
+                      }`}
+                    >
+                      📄 Problem
+                    </button>
+
+                    <button
                       onClick={() => {
                         setVisualizerTab('debug');
                         setDebugTab('variables');
@@ -247,18 +260,22 @@ export function App() {
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 text-xs text-[#8c8c8c]">
+                  <div className="flex items-center gap-2 text-xs">
                     {problem && (
-                      <span className="truncate max-w-[200px]">
-                        {problem.title}
-                      </span>
+                      <button
+                        onClick={() => setIsProblemModalOpen(true)}
+                        className="text-[#8c8c8c] hover:text-[#ffa116] transition-colors truncate max-w-[200px] flex items-center gap-1 font-medium"
+                        title="Click to view full problem description in modal"
+                      >
+                        <span>{problem.title}</span>
+                      </button>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Visualizer / Debugger Body */}
-              <div className="flex-1 min-h-0 relative">
+              {/* Visualizer / Debugger / Problem Body */}
+              <div className="flex-1 min-h-0 relative overflow-y-auto">
                 {isDrawerOpen || visualizerTab === 'tree' ? (
                   renderVisualizerContent() || (
                     <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center text-[#8c8c8c]">
@@ -268,6 +285,54 @@ export function App() {
                         Click <strong className="text-[#ffa116]">Run</strong> in the top bar to step through code execution.
                       </p>
                     </div>
+                  )
+                ) : visualizerTab === 'problem' ? (
+                  problem ? (
+                    <div className="p-6 space-y-4 text-xs text-[#d4d4d4] leading-relaxed">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-bold text-[#eff1f6]">{problem.title}</h2>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                            problem.difficulty === 'Easy'
+                              ? 'badge-easy'
+                              : problem.difficulty === 'Medium'
+                              ? 'badge-medium'
+                              : 'badge-hard'
+                          }`}
+                        >
+                          {problem.difficulty}
+                        </span>
+                      </div>
+
+                      <div className="bg-[#242424] p-4 rounded-xl border border-[#333333] whitespace-pre-line text-xs">
+                        {problem.description}
+                      </div>
+
+                      {problem.examples && problem.examples.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="font-bold text-[#eff1f6] text-xs font-mono uppercase">Examples</h4>
+                          {problem.examples.map((ex, idx) => (
+                            <div key={idx} className="bg-[#242424] p-3 rounded-xl border border-[#333333] space-y-1 font-mono text-xs">
+                              <div><span className="text-[#8c8c8c]">Input: </span><span className="text-[#ffa116]">{ex.input}</span></div>
+                              <div><span className="text-[#8c8c8c]">Output: </span><span className="text-[#2cbb5d]">{ex.output}</span></div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {problem.constraints && (
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-[#eff1f6] text-xs font-mono uppercase">Constraints</h4>
+                          <ul className="list-disc pl-5 space-y-1 text-[#8c8c8c] font-mono text-[11px]">
+                            {problem.constraints.map((c, idx) => (
+                              <li key={idx}>{c}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-6 text-center text-xs text-[#8c8c8c]">No problem loaded</div>
                   )
                 ) : (
                   <DebugPanel
@@ -323,6 +388,15 @@ export function App() {
       <ApiKeyModal
         isOpen={isApiKeyModalOpen}
         onClose={() => setIsApiKeyModalOpen(false)}
+      />
+
+      {/* Problem Statement Modal */}
+      <ProblemStatementModal
+        problem={problem}
+        isOpen={isProblemModalOpen}
+        onClose={() => setIsProblemModalOpen(false)}
+        activeInput={activeInput}
+        onInputChange={setActiveInput}
       />
     </div>
   );
