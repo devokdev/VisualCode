@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import type { ProblemContext, Language, ExecutionAnalysisResult } from './types';
 import { fetchLeetCodeProblem, analyzeAndTraceExecution } from './services/openrouter';
+import { Sidebar } from './components/Sidebar';
+import { DashboardView } from './components/DashboardView';
+import { ProblemsListView } from './components/ProblemsListView';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { ProblemHeader } from './components/ProblemHeader';
 import { CodeEditor } from './components/CodeEditor';
 import { ErrorClassificationBanner } from './components/ErrorClassificationBanner';
@@ -14,7 +18,18 @@ import { Sparkles, Terminal, Code2 } from 'lucide-react';
 
 const DEFAULT_PROBLEM_QUERY = '98. Validate Binary Search Tree';
 
+const RECENT_PROBLEMS = [
+  { title: '98. Validate Binary Search Tree', difficulty: 'Medium' as const, timeAgo: '2m ago' },
+  { title: 'Invert Binary Tree', difficulty: 'Easy' as const, timeAgo: '45m ago' },
+  { title: '200. Number of Islands', difficulty: 'Medium' as const, timeAgo: '1h ago' },
+  { title: '15. 3Sum', difficulty: 'Medium' as const, timeAgo: '3h ago' },
+  { title: '146. LRU Cache', difficulty: 'Hard' as const, timeAgo: 'Yesterday' },
+];
+
 export function App() {
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'problems' | 'editor' | 'visualizer' | 'history' | 'settings'>('dashboard');
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+
   const [problem, setProblem] = useState<ProblemContext | null>(null);
   const [language, setLanguage] = useState<Language>('python');
   const [code, setCode] = useState<string>('');
@@ -120,118 +135,174 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] text-slate-100 flex flex-col font-sans selection:bg-sky-500/30 selection:text-sky-200">
-      {/* Top Navbar */}
-      <header className="px-6 py-3 bg-[#080d1a]/90 border-b border-slate-800/80 backdrop-blur sticky top-0 z-50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
-            <Code2 className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
-              VisualCode <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30">AI Execution Visualizer</span>
+    <div className="min-h-screen bg-[#0a0a0d] text-slate-100 flex font-sans selection:bg-[#d4af37]/30 selection:text-[#f6e05e]">
+      {/* Sidebar Navigation */}
+      <Sidebar
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-h-screen overflow-y-auto">
+        {/* Top Navbar */}
+        <header className="px-8 py-3 bg-[#0d0e14]/90 border-b border-[#d4af37]/15 backdrop-blur sticky top-0 z-30 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="font-heading text-sm font-bold tracking-wider text-[#e6c97a]">
+              {currentTab === 'dashboard'
+                ? 'DASHBOARD'
+                : currentTab === 'problems'
+                ? 'PROBLEM LIBRARY'
+                : currentTab === 'editor'
+                ? 'WORKSPACE & CODE EDITOR'
+                : currentTab === 'visualizer'
+                ? 'ALGORITHM VISUALIZER'
+                : currentTab.toUpperCase()}
             </h1>
-            <p className="text-[11px] text-slate-400">Step-by-step code understanding & 3-tier error classification</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 text-xs text-slate-400">
-          <div className="flex items-center gap-1.5 bg-slate-900/80 px-2.5 py-1 rounded-md border border-slate-800">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>OpenRouter Engine: Gemini 2.5 Flash</span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Workspace Layout */}
-      <main className="flex-1 p-4 lg:p-6 flex flex-col gap-4 max-w-[1700px] w-full mx-auto">
-        {/* Problem Header & Search Bar */}
-        <ProblemHeader
-          problem={problem}
-          onFetchProblem={handleFetchProblem}
-          isLoading={isLoadingProblem}
-          activeInput={activeInput}
-          onInputChange={setActiveInput}
-        />
-
-        {/* Error Classification Banner (if analysis available) */}
-        {traceResult?.errorClassification && (
-          <ErrorClassificationBanner error={traceResult.errorClassification} />
-        )}
-
-        {/* 2-Column Split Pane */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
-          {/* Left Column: Monaco Code Editor (5 cols) */}
-          <div className="lg:col-span-5 flex flex-col gap-3 min-h-[450px]">
-            <CodeEditor
-              code={code}
-              onChange={(val) => setCode(val || '')}
-              language={language}
-              onLanguageChange={handleLanguageChange}
-              onRun={handleRunAndTrace}
-              onResetStarter={handleResetStarter}
-              isLoading={isTracing}
-              activeLine={activeStep?.line}
-            />
           </div>
 
-          {/* Right Column: Visualizer Canvas + State Inspector (7 cols) */}
-          <div className="lg:col-span-7 flex flex-col gap-3">
-            {/* Visualizer Header Controls */}
-            {traceResult && traceResult.steps && traceResult.steps.length > 0 && (
-              <TraceControls
-                currentStep={currentStepIndex}
-                totalSteps={traceResult.steps.length}
-                isPlaying={isPlaying}
-                onPlayToggle={() => setIsPlaying(!isPlaying)}
-                onStepForward={() => setCurrentStepIndex((prev) => Math.min(prev + 1, traceResult.steps.length - 1))}
-                onStepBack={() => setCurrentStepIndex((prev) => Math.max(prev - 1, 0))}
-                onReset={() => setCurrentStepIndex(0)}
-                onScrub={(idx) => setCurrentStepIndex(idx)}
-                speed={speed}
-                onSpeedChange={setSpeed}
-              />
-            )}
-
-            {/* Split Visualizer & State Panel */}
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 flex-1 min-h-[420px]">
-              {/* Data Structure Canvas (8 cols on md) */}
-              <div className="md:col-span-7 flex flex-col min-h-[380px]">
-                {renderVisualizer() || (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-slate-950/60 rounded-xl border border-slate-800 text-center">
-                    <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-sky-400 mb-3 border border-slate-800">
-                      <Sparkles className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-200 mb-1">Visualizer Ready</h3>
-                    <p className="text-xs text-slate-400 max-w-sm">
-                      Write your Python, Java, or C++ implementation and click <strong className="text-sky-300">Run & Visualize</strong> to inspect tree pointers, nodes, and step execution.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* State & Call Stack Inspector (5 cols on md) */}
-              <div className="md:col-span-5 flex flex-col min-h-[380px]">
-                <StateInspector
-                  variables={activeStep?.variables}
-                  callStack={activeStep?.callStack}
-                  stdout={activeStep?.stdout}
-                  returnValue={activeStep?.returnValue}
-                />
-              </div>
+          <div className="flex items-center gap-3 text-xs text-[#a09a88]">
+            <div className="flex items-center gap-1.5 bg-[#141520] px-3 py-1 rounded-lg border border-[#d4af37]/20">
+              <span className="w-2 h-2 rounded-full bg-[#00b8a3] animate-pulse" />
+              <span className="font-mono text-[11px] text-[#e2e8f0]">OpenRouter Gemini 2.5 Flash</span>
             </div>
           </div>
-        </div>
-      </main>
+        </header>
 
-      {/* Footer */}
-      <footer className="px-6 py-2 bg-[#080d1a] border-t border-slate-800/80 text-[11px] text-slate-500 flex items-center justify-between">
-        <span>VisualCode • AI-Powered Dynamic Algorithm & Data Structure Visualizer</span>
-        <div className="flex items-center gap-1 text-slate-400">
-          <Terminal className="w-3.5 h-3.5" />
-          <span>Multi-Language AST Execution Engine</span>
-        </div>
-      </footer>
+        {/* Tab Router Content */}
+        {currentTab === 'dashboard' && (
+          <DashboardView
+            onSelectProblem={(q) => handleFetchProblem(q)}
+            onNavigateTab={setCurrentTab}
+            onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+            recentProblems={RECENT_PROBLEMS}
+          />
+        )}
+
+        {currentTab === 'problems' && (
+          <ProblemsListView
+            onSelectProblem={(q) => handleFetchProblem(q)}
+            onNavigateTab={setCurrentTab}
+          />
+        )}
+
+        {(currentTab === 'editor' || currentTab === 'visualizer') && (
+          <main className="flex-1 p-6 flex flex-col gap-5 max-w-[1700px] w-full mx-auto">
+            {/* Problem Header & Search Bar */}
+            <ProblemHeader
+              problem={problem}
+              onFetchProblem={handleFetchProblem}
+              isLoading={isLoadingProblem}
+              activeInput={activeInput}
+              onInputChange={setActiveInput}
+            />
+
+            {/* Error Classification Banner (if analysis available) */}
+            {traceResult?.errorClassification && (
+              <ErrorClassificationBanner error={traceResult.errorClassification} />
+            )}
+
+            {/* 2-Column Split Pane */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+              {/* Left Column: Monaco Code Editor (5 cols) */}
+              <div className="lg:col-span-5 flex flex-col gap-3 min-h-[460px]">
+                <CodeEditor
+                  code={code}
+                  onChange={(val) => setCode(val || '')}
+                  language={language}
+                  onLanguageChange={handleLanguageChange}
+                  onRun={handleRunAndTrace}
+                  onResetStarter={handleResetStarter}
+                  isLoading={isTracing}
+                  activeLine={activeStep?.line}
+                />
+              </div>
+
+              {/* Right Column: Visualizer Canvas + State Inspector (7 cols) */}
+              <div className="lg:col-span-7 flex flex-col gap-3">
+                {/* Visualizer Header Controls */}
+                {traceResult && traceResult.steps && traceResult.steps.length > 0 && (
+                  <TraceControls
+                    currentStep={currentStepIndex}
+                    totalSteps={traceResult.steps.length}
+                    isPlaying={isPlaying}
+                    onPlayToggle={() => setIsPlaying(!isPlaying)}
+                    onStepForward={() => setCurrentStepIndex((prev) => Math.min(prev + 1, traceResult.steps.length - 1))}
+                    onStepBack={() => setCurrentStepIndex((prev) => Math.max(prev - 1, 0))}
+                    onReset={() => setCurrentStepIndex(0)}
+                    onScrub={(idx) => setCurrentStepIndex(idx)}
+                    speed={speed}
+                    onSpeedChange={setSpeed}
+                  />
+                )}
+
+                {/* Split Visualizer & State Panel */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 min-h-[420px]">
+                  {/* Data Structure Canvas (8 cols on md) */}
+                  <div className="md:col-span-7 flex flex-col min-h-[380px]">
+                    {renderVisualizer() || (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-8 bg-[#11121a] rounded-2xl border border-[#d4af37]/20 text-center shadow-xl">
+                        <div className="w-12 h-12 rounded-xl bg-[#1c1d29] flex items-center justify-center text-[#d4af37] mb-3 border border-[#d4af37]/30 shadow-inner">
+                          <Sparkles className="w-6 h-6" />
+                        </div>
+                        <h3 className="font-serif-title text-sm font-semibold text-[#f1ede2] mb-1">Visualizer Ready</h3>
+                        <p className="text-xs text-[#8e8a9c] max-w-sm leading-relaxed">
+                          Write your Python, Java, or C++ implementation and click <strong className="text-[#d4af37]">Run & Visualize</strong> to inspect tree pointers, nodes, and step execution.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* State & Call Stack Inspector (5 cols on md) */}
+                  <div className="md:col-span-5 flex flex-col min-h-[380px]">
+                    <StateInspector
+                      variables={activeStep?.variables}
+                      callStack={activeStep?.callStack}
+                      stdout={activeStep?.stdout}
+                      returnValue={activeStep?.returnValue}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        )}
+
+        {(currentTab === 'history' || currentTab === 'settings') && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="p-8 rounded-2xl border border-[#d4af37]/20 bg-[#11121a] text-center max-w-md shadow-2xl">
+              <Code2 className="w-8 h-8 text-[#d4af37] mx-auto mb-3" />
+              <h3 className="font-serif-title text-base font-semibold text-[#f1ede2] mb-1">
+                {currentTab === 'history' ? 'Execution History' : 'Preferences & Settings'}
+              </h3>
+              <p className="text-xs text-[#8e8a9c] mb-4">
+                Configure your OpenRouter models, editor font sizes, and view past algorithm runs.
+              </p>
+              <button
+                onClick={() => setIsApiKeyModalOpen(true)}
+                className="px-4 py-2 bg-[#d4af37] text-[#0a0a0e] font-bold text-xs rounded-xl shadow-md"
+              >
+                Configure API Key
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <footer className="px-8 py-3 bg-[#0c0d12] border-t border-[#d4af37]/15 text-[11px] text-[#7d7a8a] flex items-center justify-between">
+          <span>VisualCode • Visualize. Debug. Conquer.</span>
+          <div className="flex items-center gap-1.5 text-[#9d98a8]">
+            <Terminal className="w-3.5 h-3.5 text-[#d4af37]" />
+            <span>LeetCode Multi-Language AST Execution Engine</span>
+          </div>
+        </footer>
+      </div>
+
+      {/* API Key Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+      />
     </div>
   );
 }
