@@ -11,6 +11,61 @@ export function setApiKey(key: string): void {
   localStorage.setItem('visualcode_openrouter_key', key.trim());
 }
 
+function repairJson(str: string): any {
+  // 1. Direct try
+  try {
+    return JSON.parse(str.trim());
+  } catch {}
+
+  // 2. Extract block
+  const block = str.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (block) {
+    try {
+      return JSON.parse(block[1].trim());
+    } catch {}
+  }
+
+  // 3. Slice from first '{' to last '}'
+  const first = str.indexOf('{');
+  const last = str.lastIndexOf('}');
+  if (first !== -1 && last !== -1 && last > first) {
+    const sliced = str.slice(first, last + 1);
+    try {
+      return JSON.parse(sliced);
+    } catch {}
+
+    // 4. Sanitize unescaped newlines/tabs inside string literals
+    try {
+      const sanitized = sliced
+        .replace(/(?<!\\)\r?\n(?=(?:(?:[^"]*"){2})*[^"]*"[^"]*$)/g, '\\n')
+        .replace(/(?<!\\)\t(?=(?:(?:[^"]*"){2})*[^"]*"[^"]*$)/g, '\\t');
+      return JSON.parse(sanitized);
+    } catch {}
+  }
+
+  // 5. Fallback: if ends prematurely, close open array and objects
+  if (first !== -1) {
+    let partial = str.slice(first);
+    // Remove trailing commas
+    partial = partial.replace(/,\s*([}\]])/g, '$1').replace(/,\s*$/, '');
+    const openBraces = (partial.match(/{/g) || []).length;
+    const closeBraces = (partial.match(/}/g) || []).length;
+    const openBrackets = (partial.match(/\[/g) || []).length;
+    const closeBrackets = (partial.match(/]/g) || []).length;
+
+    for (let i = 0; i < openBrackets - closeBrackets; i++) partial += ']';
+    for (let i = 0; i < openBraces - closeBraces; i++) partial += '}';
+
+    try {
+      return JSON.parse(partial);
+    } catch (e: any) {
+      console.error('Partial JSON repair failed:', e);
+    }
+  }
+
+  throw new Error(`Failed to parse AI response as JSON.`);
+}
+
 async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true): Promise<any> {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -45,34 +100,7 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
   }
 
   if (jsonMode) {
-    // 1. Direct parse attempt
-    try {
-      return JSON.parse(rawContent.trim());
-    } catch {
-      // 2. Extract from markdown code fence
-      const blockMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (blockMatch) {
-        try {
-          return JSON.parse(blockMatch[1].trim());
-        } catch {
-          // continue fallback
-        }
-      }
-
-      // 3. Find first '{' and last '}' substring
-      const startIdx = rawContent.indexOf('{');
-      const endIdx = rawContent.lastIndexOf('}');
-      if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-        const candidate = rawContent.slice(startIdx, endIdx + 1);
-        try {
-          return JSON.parse(candidate);
-        } catch (subErr: any) {
-          console.error('JSON recovery error:', subErr, candidate);
-        }
-      }
-
-      throw new Error(`Failed to parse AI structured response as JSON. Output was: ${rawContent.slice(0, 200)}...`);
-    }
+    return repairJson(rawContent);
   }
 
   return rawContent;
