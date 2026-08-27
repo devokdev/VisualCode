@@ -1,11 +1,10 @@
 import type { ExecutionAnalysisResult, Language, ProblemContext } from '../types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const DEFAULT_API_KEY = (import.meta as any).env?.VITE_OPENROUTER_API_KEY || '';
 const PRIMARY_MODEL = 'google/gemini-2.5-flash';
 
 export function getApiKey(): string {
-  return localStorage.getItem('visualcode_openrouter_key') || DEFAULT_API_KEY;
+  return localStorage.getItem('visualcode_openrouter_key') || (import.meta as any).env?.VITE_OPENROUTER_API_KEY || '';
 }
 
 export function setApiKey(key: string): void {
@@ -14,6 +13,9 @@ export function setApiKey(key: string): void {
 
 async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true): Promise<any> {
   const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('Missing API Key. Please click the "API Key" button at the top right to configure your OpenRouter API Key.');
+  }
   const res = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
