@@ -127,7 +127,7 @@ Respond with ONLY a valid JSON object matching this TypeScript structure:
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true, 1800);
+  return await callOpenRouter(messages, true, 1400);
 }
 
 export async function analyzeAndTraceExecution(
@@ -163,7 +163,7 @@ INSTRUCTIONS:
    - 'none': Correct logic and passes expected output.
 
 2. Step-by-step Execution Trace:
-   - Provide 4 to 12 concise key execution steps.
+   - Provide 4 to 8 concise key execution steps.
    - For EACH step, MUST populate the matching data structure state for "${dsType}":
      * If "${dsType}" is "array": you MUST populate "arrayState" as an array of objects: [{ "index": 0, "val": 1, "pointers": ["i"], "status": "active" }, { "index": 1, "val": 2, "pointers": [], "status": "default" }] showing the current array values and where any pointers/indices (i, j, k, left, right) are.
      * If "${dsType}" is "tree" or "bst": populate "treeState" with { id, val, pointers, status, left, right }.
@@ -212,5 +212,5 @@ INSTRUCTIONS:
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true, 2800);
+  return await callOpenRouter(messages, true, 1600);
 }
