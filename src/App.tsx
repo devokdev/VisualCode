@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { ProblemContext, Language, ExecutionAnalysisResult } from './types';
-import { fetchLeetCodeProblem, analyzeAndTraceExecution } from './services/openrouter';
+import { fetchLeetCodeProblem, diagnoseExecutionError } from './services/openrouter';
+import { traceDeterministically } from './services/deterministicTracer';
 import { TopBar } from './components/TopBar';
 import { CodeEditor } from './components/CodeEditor';
 import { CompactErrorBanner } from './components/CompactErrorBanner';
@@ -96,18 +97,45 @@ export function App() {
     setIsTracing(true);
     setIsPlaying(false);
     try {
-      const result = await analyzeAndTraceExecution(problem, code, language, activeInput);
-      setTraceResult(result);
+      // 1. Run deterministic local execution tracer (instant, zero-latency, full loop steps)
+      const localResult = traceDeterministically(problem, code, language, activeInput);
+      setTraceResult(localResult);
       setCurrentStepIndex(0);
+      triggerSubtleConfetti();
 
-      // Auto open drawer if error detected
-      if (result.errorClassification.type !== 'none') {
-        setIsDrawerOpen(true);
-      } else {
-        triggerSubtleConfetti();
+      // 2. Check if output differs or if code might have subtle issues -> diagnose via AI
+      const expected = problem.examples[0]?.output?.trim();
+      const actual = localResult.errorClassification.actualOutput?.trim();
+
+      if (expected && actual && expected !== actual) {
+        // Asynchronously request AI to diagnose and classify error
+        diagnoseExecutionError(problem, code, language, actual).then((diag) => {
+          setTraceResult((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              errorClassification: diag.errorClassification,
+            };
+          });
+          if (diag.errorClassification.type !== 'none') {
+            setIsDrawerOpen(true);
+          }
+        }).catch((e) => console.warn('AI diagnostic failed:', e));
       }
     } catch (err: any) {
-      alert(`Execution trace error: ${err.message}`);
+      // If deterministic trace fails with runtime exception -> query AI diagnostics
+      diagnoseExecutionError(problem, code, language, undefined, err.message).then((diag) => {
+        setTraceResult((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            errorClassification: diag.errorClassification,
+          };
+        });
+        setIsDrawerOpen(true);
+      }).catch(() => {
+        alert(`Execution trace error: ${err.message}`);
+      });
     } finally {
       setIsTracing(false);
     }
@@ -115,6 +143,7 @@ export function App() {
 
   const activeStep = traceResult?.steps?.[currentStepIndex];
   const prevStep = currentStepIndex > 0 ? traceResult?.steps?.[currentStepIndex - 1] : undefined;
+  const nextStep = traceResult?.steps && currentStepIndex < traceResult.steps.length - 1 ? traceResult.steps[currentStepIndex + 1] : undefined;
 
   const renderVisualizerContent = () => {
     return (
@@ -177,6 +206,7 @@ export function App() {
                   language={language}
                   onResetStarter={handleResetStarter}
                   activeLine={activeStep?.line}
+                  nextLine={nextStep?.line}
                 />
               </Panel>
 

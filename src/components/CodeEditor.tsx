@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import type { Language } from '../types';
 import { RotateCcw } from 'lucide-react';
@@ -9,6 +9,7 @@ interface CodeEditorProps {
   language: Language;
   onResetStarter: () => void;
   activeLine?: number;
+  nextLine?: number;
 }
 
 export const CodeEditor: React.FC<CodeEditorProps> = ({
@@ -17,10 +18,18 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   language,
   onResetStarter,
   activeLine,
+  nextLine,
 }) => {
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<any>(null);
+  const decorationsRef = useRef<any[]>([]);
+
   const monacoLanguage = language === 'python' ? 'python' : language === 'java' ? 'java' : 'cpp';
 
-  const handleEditorDidMount = (_editor: any, monaco: any) => {
+  const handleEditorDidMount = (editor: any, monaco: any) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+
     monaco.editor.defineTheme('leetCodeDark', {
       base: 'vs-dark',
       inherit: true,
@@ -42,6 +51,43 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     monaco.editor.setTheme('leetCodeDark');
   };
 
+  // Sync dual-line indicators (Executed Line = Green, Next Line = Red)
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+    const monaco = monacoRef.current;
+    const newDecorations: any[] = [];
+
+    if (activeLine && activeLine > 0) {
+      newDecorations.push({
+        range: new monaco.Range(activeLine, 1, activeLine, 1),
+        options: {
+          isWholeLine: true,
+          className: 'bg-[#2cbb5d]/15 border-l-2 border-[#2cbb5d]',
+          glyphMarginClassName: 'executed-line-glyph',
+        },
+      });
+      try {
+        editorRef.current.revealLineInCenterIfOutsideViewport(activeLine);
+      } catch {}
+    }
+
+    if (nextLine && nextLine > 0 && nextLine !== activeLine) {
+      newDecorations.push({
+        range: new monaco.Range(nextLine, 1, nextLine, 1),
+        options: {
+          isWholeLine: true,
+          className: 'bg-[#ef4743]/15 border-l-2 border-[#ef4743]',
+          glyphMarginClassName: 'next-line-glyph',
+        },
+      });
+    }
+
+    decorationsRef.current = editorRef.current.deltaDecorations(
+      decorationsRef.current,
+      newDecorations
+    );
+  }, [activeLine, nextLine]);
+
   return (
     <div className="flex flex-col h-full bg-[#1a1a1a] relative select-none">
       {/* Editor Header Bar */}
@@ -49,8 +95,15 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-semibold text-[#8c8c8c] uppercase">{language}</span>
           {activeLine && (
-            <span className="text-[11px] font-mono bg-[#333333] text-[#ffa116] px-2 py-0.5 rounded border border-[#484848]">
-              Line {activeLine}
+            <span className="text-[11px] font-mono bg-[#2cbb5d]/20 text-[#2cbb5d] px-2 py-0.5 rounded border border-[#2cbb5d]/30 flex items-center gap-1">
+              <span>➔</span>
+              <span>Executed: L{activeLine}</span>
+            </span>
+          )}
+          {nextLine && (
+            <span className="text-[11px] font-mono bg-[#ef4743]/20 text-[#ef4743] px-2 py-0.5 rounded border border-[#ef4743]/30 flex items-center gap-1">
+              <span>➔</span>
+              <span>Next: L{nextLine}</span>
             </span>
           )}
         </div>
@@ -90,3 +143,4 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     </div>
   );
 };
+
