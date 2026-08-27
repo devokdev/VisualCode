@@ -2,7 +2,18 @@ import { jsonrepair } from 'jsonrepair';
 import type { ExecutionAnalysisResult, Language, ProblemContext } from '../types';
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const PRIMARY_MODEL = 'google/gemini-2.5-flash';
+
+// Ultra-cheap & free models list for automatic cascading fallback:
+// 1. deepseek/deepseek-chat (10x cheaper than Gemini, highly capable at coding & structured JSON)
+// 2. google/gemini-2.0-flash-lite-001 (ultra lightweight & cheap)
+// 3. meta-llama/llama-3.3-70b-instruct:free (free tier fallback)
+// 4. google/gemini-2.5-flash
+const MODELS_PRIORITY = [
+  'deepseek/deepseek-chat',
+  'google/gemini-2.0-flash-lite-001',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'google/gemini-2.5-flash',
+];
 
 export function getApiKey(): string {
   return localStorage.getItem('visualcode_openrouter_key') || (import.meta as any).env?.VITE_OPENROUTER_API_KEY || '';
@@ -46,44 +57,59 @@ function parseAndRepairJson(rawContent: string): any {
   throw new Error('Could not parse AI response. Please try re-running.');
 }
 
-async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 2800): Promise<any> {
+async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 1200): Promise<any> {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('Missing API Key. Please click the "API Key" button at the top right to configure your OpenRouter API Key.');
   }
-  const res = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://visualcode.dev',
-      'X-Title': 'VisualCode AI Visualizer',
-    },
-    body: JSON.stringify({
-      model: PRIMARY_MODEL,
-      messages,
-      response_format: jsonMode ? { type: 'json_object' } : undefined,
-      temperature: 0.1,
-      max_tokens: maxTokens,
-    }),
-  });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`OpenRouter API Error (${res.status}): ${errText}`);
+  let lastError: Error | null = null;
+
+  // Try each model in sequence (cascade fallback to cheaper/free models)
+  for (const model of MODELS_PRIORITY) {
+    try {
+      const res = await fetch(OPENROUTER_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://visualcode.dev',
+          'X-Title': 'VisualCode AI Visualizer',
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          response_format: jsonMode ? { type: 'json_object' } : undefined,
+          temperature: 0.1,
+          max_tokens: maxTokens,
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`Model ${model} returned error (${res.status}):`, errText);
+        lastError = new Error(`OpenRouter (${model}): ${errText}`);
+        // If 402 or rate-limited, continue to next cheaper/free model
+        continue;
+      }
+
+      const data = await res.json();
+      const rawContent = data.choices?.[0]?.message?.content;
+      if (!rawContent) {
+        continue;
+      }
+
+      if (jsonMode) {
+        return parseAndRepairJson(rawContent);
+      }
+
+      return rawContent;
+    } catch (err: any) {
+      lastError = err;
+    }
   }
 
-  const data = await res.json();
-  const rawContent = data.choices?.[0]?.message?.content;
-  if (!rawContent) {
-    throw new Error('Received empty response from OpenRouter AI.');
-  }
-
-  if (jsonMode) {
-    return parseAndRepairJson(rawContent);
-  }
-
-  return rawContent;
+  throw lastError || new Error('All model fallbacks failed. Please check your OpenRouter credits.');
 }
 
 export async function fetchLeetCodeProblem(query: string): Promise<ProblemContext> {
@@ -127,7 +153,7 @@ Respond with ONLY a valid JSON object matching this TypeScript structure:
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true, 1400);
+  return await callOpenRouter(messages, true, 1000);
 }
 
 export async function analyzeAndTraceExecution(
@@ -212,5 +238,5 @@ INSTRUCTIONS:
     { role: 'user', content: prompt }
   ];
 
-  return await callOpenRouter(messages, true, 1600);
+  return await callOpenRouter(messages, true, 1200);
 }
