@@ -26,7 +26,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
         .attr('x', width / 2)
         .attr('y', height / 2)
         .attr('text-anchor', 'middle')
-        .attr('fill', '#94a3b8')
+        .attr('fill', '#716e7d')
         .attr('font-size', '14px')
         .text('Tree is empty or null (root is null)');
       return;
@@ -78,13 +78,14 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
                   ${d.target.x} ${d.target.y}`;
       })
       .attr('fill', 'none')
-      .attr('stroke', '#475569')
+      .attr('stroke', '#383647')
       .attr('stroke-width', 2)
       .attr('stroke-dasharray', '4,2')
       .transition()
       .duration(300)
       .attr('stroke-dasharray', 'none')
-      .attr('stroke', '#64748b');
+      .attr('stroke', '#d4af37')
+      .attr('stroke-opacity', 0.4);
 
     // Draw nodes
     const nodeGroups = g
@@ -101,7 +102,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
       .append('circle')
       .attr('r', nodeRadius + 6)
       .attr('fill', 'none')
-      .attr('stroke', (d) => (d.data.status === 'active' ? '#38bdf8' : '#a855f7'))
+      .attr('stroke', '#d4af37')
       .attr('stroke-width', 2.5)
       .attr('opacity', 0.8)
       .attr('class', 'animate-pulse');
@@ -113,36 +114,36 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
       .attr('fill', (d) => {
         switch (d.data.status) {
           case 'active':
-            return '#0284c7'; // sky blue
+            return '#2b2615'; // gold dark
           case 'visited':
-            return '#334155'; // muted slate
+            return '#181926'; // muted slate
           case 'modified':
           case 'inserted':
-            return '#059669'; // emerald
+            return '#0d2824'; // emerald dark
           case 'deleted':
-            return '#dc2626'; // red
+            return '#331219'; // red dark
           case 'target':
-            return '#d97706'; // amber
+            return '#2b2111'; // amber dark
           default:
-            return '#1e293b'; // slate-800
+            return '#12131c'; // default dark
         }
       })
       .attr('stroke', (d) => {
         switch (d.data.status) {
           case 'active':
-            return '#38bdf8';
+            return '#d4af37';
           case 'modified':
           case 'inserted':
-            return '#34d399';
+            return '#00b8a3';
           case 'deleted':
-            return '#f87171';
+            return '#ff375f';
           case 'target':
-            return '#fbbf24';
+            return '#ffc01e';
           default:
-            return '#475569';
+            return '#3d3a4d';
         }
       })
-      .attr('stroke-width', 2.5)
+      .attr('stroke-width', 2)
       .style('cursor', 'pointer');
 
     // Node Value Text
@@ -157,7 +158,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
 
     // Pointer Badges (e.g. root, curr, p, q)
     nodeGroups
-      .filter((d) => !!d.data.pointers && d.data.pointers.length > 0)
+      .filter((d) => Boolean(d.data.pointers && d.data.pointers.length > 0))
       .each(function (d) {
         const pointers = d.data.pointers || [];
         const group = d3.select(this);
@@ -170,7 +171,7 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
           const textEl = badgeGroup
             .append('text')
             .attr('text-anchor', 'middle')
-            .attr('fill', '#ffffff')
+            .attr('fill', '#0a0a0e')
             .attr('font-size', '10px')
             .attr('font-weight', '800')
             .text(ptr);
@@ -185,22 +186,22 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
             .attr('width', bbox.width + padding * 2)
             .attr('height', 14)
             .attr('rx', 4)
-            .attr('fill', ptr === 'root' ? '#6366f1' : ptr === 'curr' ? '#0ea5e9' : '#ec4899')
-            .attr('stroke', '#ffffff')
+            .attr('fill', '#d4af37')
+            .attr('stroke', '#f6e05e')
             .attr('stroke-width', 1);
         });
       });
   }, [data]);
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-slate-950/70 rounded-xl border border-slate-800/80 overflow-hidden select-none">
+    <div className="relative w-full h-full flex flex-col bg-[#0e0f15] rounded-2xl border border-[#d4af37]/20 overflow-hidden select-none shadow-2xl">
       {/* Header controls overlay */}
-      <div className="absolute top-3 left-4 z-10 flex items-center gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/90 px-2.5 py-1 rounded-md border border-slate-800 shadow-sm backdrop-blur">
+      <div className="absolute top-3.5 left-4 z-10 flex items-center gap-2">
+        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#d4af37] bg-[#1a1b26] px-3 py-1 rounded-lg border border-[#d4af37]/25 shadow-sm backdrop-blur">
           🌳 Tree Structure
         </span>
         {data && (
-          <span className="text-xs text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800/60">
+          <span className="text-[10px] text-[#8e897a] bg-[#0a0a0e]/90 px-2.5 py-0.5 rounded-lg border border-[#d4af37]/15">
             Scroll to zoom • Drag to pan
           </span>
         )}
@@ -213,9 +214,9 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({ data, stepExplan
 
       {/* Step context explanation bottom bar */}
       {stepExplanation && (
-        <div className="px-4 py-2 bg-slate-900/90 border-t border-slate-800/80 text-xs text-slate-300 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
-          <span className="font-medium text-sky-300">Action:</span>
+        <div className="px-4 py-2.5 bg-[#08090d] border-t border-[#d4af37]/15 text-xs text-[#c4bfb2] flex items-center gap-2 rounded-b-xl">
+          <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-ping" />
+          <span className="font-semibold text-[#d4af37]">Action:</span>
           <span className="truncate">{stepExplanation}</span>
         </div>
       )}

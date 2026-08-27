@@ -15,9 +15,9 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
   stepExplanation,
 }) => {
   return (
-    <div className="relative w-full h-full flex flex-col bg-slate-950/70 rounded-xl border border-slate-800/80 overflow-hidden select-none p-4">
+    <div className="relative w-full h-full flex flex-col bg-[#0e0f15] rounded-2xl border border-[#d4af37]/20 overflow-hidden select-none p-5 shadow-2xl">
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/90 px-2.5 py-1 rounded-md border border-slate-800 shadow-sm backdrop-blur">
+        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-[#d4af37] bg-[#1a1b26] px-3 py-1 rounded-lg border border-[#d4af37]/25 shadow-sm">
           {linkedListState ? '🔗 Linked List' : matrixState ? '🧱 2D Matrix / Grid' : '📊 Array & Pointers'}
         </span>
       </div>
@@ -36,7 +36,7 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
                       {node.pointers?.map((p, pIdx) => (
                         <span
                           key={pIdx}
-                          className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-indigo-500 text-white shadow-sm animate-bounce"
+                          className="px-2 py-0.5 text-[10px] font-bold rounded-md bg-[#d4af37] text-[#0a0a0e] shadow-md animate-bounce"
                         >
                           {p}
                         </span>
@@ -45,28 +45,28 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
 
                     {/* Node Box */}
                     <div
-                      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center transition-all ${
+                      className={`w-14 h-14 rounded-xl border-2 flex flex-col items-center justify-center transition-all ${
                         isActive
-                          ? 'border-sky-400 bg-sky-950/80 shadow-[0_0_15px_rgba(56,189,248,0.4)] scale-105'
+                          ? 'border-[#d4af37] bg-[#222436] shadow-[0_0_16px_rgba(212,175,55,0.3)] scale-105'
                           : node.status === 'visited'
-                          ? 'border-slate-600 bg-slate-800/60'
-                          : 'border-slate-700 bg-slate-900/80'
+                          ? 'border-[#4a4759] bg-[#141520]'
+                          : 'border-[#d4af37]/25 bg-[#090a0f]'
                       }`}
                     >
-                      <span className="text-sm font-bold text-slate-100">{node.val}</span>
-                      <span className="text-[9px] text-slate-500 font-mono">val</span>
+                      <span className="text-sm font-bold text-[#f3f0e6]">{node.val}</span>
+                      <span className="text-[9px] text-[#8e897a] font-mono">val</span>
                     </div>
                   </div>
 
                   {/* Arrow to next */}
                   {idx < linkedListState.length - 1 && (
-                    <div className="flex items-center mx-1 text-slate-400">
+                    <div className="flex items-center mx-1.5 text-[#d4af37]/70">
                       <span className="text-base font-bold">→</span>
                     </div>
                   )}
                   {idx === linkedListState.length - 1 && (
-                    <div className="flex items-center ml-2 text-slate-500 font-mono text-xs">
-                      → <span className="ml-1 text-red-400 font-semibold">null</span>
+                    <div className="flex items-center ml-2 text-[#716e7d] font-mono text-xs">
+                      → <span className="ml-1 text-[#ff375f] font-semibold">null</span>
                     </div>
                   )}
                 </div>
@@ -88,12 +88,12 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
                     {elem.pointers?.map((p, pIdx) => (
                       <span
                         key={pIdx}
-                        className={`px-1.5 py-0.5 text-[10px] font-bold rounded shadow-sm text-white ${
+                        className={`px-2 py-0.5 text-[10px] font-bold rounded-md shadow-md ${
                           p === 'left' || p === 'i'
-                            ? 'bg-sky-500'
+                            ? 'bg-[#d4af37] text-[#0a0a0e]'
                             : p === 'right' || p === 'j'
-                            ? 'bg-rose-500'
-                            : 'bg-emerald-500'
+                            ? 'bg-[#ff375f] text-white'
+                            : 'bg-[#00b8a3] text-[#0a0a0e]'
                         }`}
                       >
                         {p}
@@ -103,19 +103,19 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
 
                   {/* Array Cell */}
                   <div
-                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center transition-all ${
+                    className={`w-12 h-12 rounded-xl border-2 flex items-center justify-center transition-all ${
                       isActive
-                        ? 'border-sky-400 bg-sky-950/80 text-sky-200 font-bold shadow-[0_0_12px_rgba(56,189,248,0.5)] scale-105'
+                        ? 'border-[#d4af37] bg-[#222436] text-[#e6c97a] font-bold shadow-[0_0_14px_rgba(212,175,55,0.35)] scale-105'
                         : isCompared
-                        ? 'border-amber-400 bg-amber-950/80 text-amber-200 font-bold'
-                        : 'border-slate-700 bg-slate-900/80 text-slate-200'
+                        ? 'border-[#ffc01e] bg-[#231f13] text-[#ffc01e] font-bold'
+                        : 'border-[#d4af37]/20 bg-[#090a0f] text-[#e2e8f0]'
                     }`}
                   >
                     <span className="text-base font-mono font-semibold">{elem.val}</span>
                   </div>
 
                   {/* Index beneath */}
-                  <span className="text-[10px] text-slate-500 font-mono mt-1">[{elem.index}]</span>
+                  <span className="text-[10px] text-[#716e7d] font-mono mt-1">[{elem.index}]</span>
                 </div>
               );
             })}
@@ -133,17 +133,17 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
                   return (
                     <div
                       key={`${rIdx}-${cIdx}`}
-                      className={`w-10 h-10 rounded border flex flex-col items-center justify-center relative transition-all ${
+                      className={`w-10 h-10 rounded-lg border flex flex-col items-center justify-center relative transition-all ${
                         isActive
-                          ? 'border-sky-400 bg-sky-950/90 text-sky-200 font-bold shadow-[0_0_8px_rgba(56,189,248,0.5)]'
+                          ? 'border-[#d4af37] bg-[#222436] text-[#e6c97a] font-bold shadow-[0_0_10px_rgba(212,175,55,0.35)]'
                           : isVisited
-                          ? 'border-emerald-600 bg-emerald-950/40 text-emerald-300'
-                          : 'border-slate-800 bg-slate-900/60 text-slate-300'
+                          ? 'border-[#00b8a3]/60 bg-[#0b201d] text-[#00b8a3]'
+                          : 'border-[#d4af37]/15 bg-[#090a0f] text-[#e2e8f0]'
                       }`}
                     >
                       <span className="text-xs font-mono">{cell.val}</span>
                       {cell.pointers && cell.pointers.length > 0 && (
-                        <div className="absolute -top-2 bg-indigo-600 text-[8px] text-white px-1 rounded font-bold">
+                        <div className="absolute -top-2 bg-[#d4af37] text-[8px] text-[#0a0a0e] px-1 rounded font-bold">
                           {cell.pointers[0]}
                         </div>
                       )}
@@ -157,9 +157,9 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
       </div>
 
       {stepExplanation && (
-        <div className="px-4 py-2 bg-slate-900/90 border-t border-slate-800/80 text-xs text-slate-300 flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
-          <span className="font-medium text-sky-300">Action:</span>
+        <div className="px-4 py-2.5 bg-[#08090d] border-t border-[#d4af37]/15 text-xs text-[#c4bfb2] flex items-center gap-2 rounded-b-xl">
+          <span className="w-2 h-2 rounded-full bg-[#d4af37] animate-ping" />
+          <span className="font-semibold text-[#d4af37]">Action:</span>
           <span className="truncate">{stepExplanation}</span>
         </div>
       )}

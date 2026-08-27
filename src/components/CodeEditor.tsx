@@ -32,42 +32,42 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       inherit: true,
       rules: [
         { token: 'comment', foreground: '64748b', fontStyle: 'italic' },
-        { token: 'keyword', foreground: '38bdf8', fontStyle: 'bold' },
-        { token: 'string', foreground: '34d399' },
-        { token: 'number', foreground: 'fbbf24' },
+        { token: 'keyword', foreground: 'd4af37', fontStyle: 'bold' },
+        { token: 'string', foreground: '00b8a3' },
+        { token: 'number', foreground: 'ffc01e' },
       ],
       colors: {
-        'editor.background': '#090d16',
-        'editor.lineHighlightBackground': '#1e293b55',
-        'editorLineNumber.foreground': '#475569',
-        'editorLineNumber.activeForeground': '#38bdf8',
-        'editorCursor.foreground': '#38bdf8',
+        'editor.background': '#0a0a0d',
+        'editor.lineHighlightBackground': '#18192455',
+        'editorLineNumber.foreground': '#4f4c5c',
+        'editorLineNumber.activeForeground': '#d4af37',
+        'editorCursor.foreground': '#d4af37',
       },
     });
     monaco.editor.setTheme('visualCodeDark');
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950/80 rounded-xl border border-slate-800/90 overflow-hidden shadow-2xl">
+    <div className="flex flex-col h-full bg-[#0d0e14] rounded-2xl border border-[#d4af37]/20 overflow-hidden shadow-2xl">
       {/* Editor Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-slate-900/90 border-b border-slate-800/80">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-[#11121a] border-b border-[#d4af37]/15">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full bg-rose-500/80" />
-            <span className="w-3 h-3 rounded-full bg-amber-500/80" />
-            <span className="w-3 h-3 rounded-full bg-emerald-500/80" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ff375f]/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#ffc01e]/70" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[#00b8a3]/70" />
           </div>
 
           {/* Language selector */}
-          <div className="flex rounded-lg bg-slate-950 p-0.5 border border-slate-800">
+          <div className="flex rounded-lg bg-[#0a0a0e] p-0.5 border border-[#d4af37]/20">
             {(['python', 'java', 'cpp'] as Language[]).map((lang) => (
               <button
                 key={lang}
                 onClick={() => onLanguageChange(lang)}
                 className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
                   language === lang
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-[#d4af37] text-[#0a0a0e] font-bold shadow-sm'
+                    : 'text-[#8e8a9c] hover:text-[#e2e8f0]'
                 }`}
               >
                 {lang === 'python' ? 'Python' : lang === 'java' ? 'Java' : 'C++'}
@@ -76,8 +76,8 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           </div>
 
           {activeLine && (
-            <span className="text-xs font-mono bg-sky-950 text-sky-300 border border-sky-800/60 px-2 py-0.5 rounded animate-pulse">
-              Executing Line {activeLine}
+            <span className="text-xs font-mono bg-[#1b1c28] text-[#e6c97a] border border-[#d4af37]/35 px-2 py-0.5 rounded animate-pulse">
+              Line {activeLine}
             </span>
           )}
         </div>
@@ -87,7 +87,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onResetStarter}
             title="Reset Starter Code"
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-md transition-all"
+            className="p-1.5 text-[#8e8a9c] hover:text-[#e2e8f0] hover:bg-[#181926] rounded-lg transition-all"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -95,20 +95,20 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
           <button
             onClick={onRun}
             disabled={isLoading}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-lg ${
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg ${
               isLoading
-                ? 'bg-sky-700/50 text-sky-200 cursor-not-allowed'
-                : 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white shadow-sky-500/20 active:scale-95'
+                ? 'bg-[#252636] text-[#716e80] cursor-not-allowed'
+                : 'bg-gradient-to-r from-[#d4af37] to-[#b8952b] hover:from-[#e2c069] hover:to-[#cfa332] text-[#0a0a0e] shadow-[#d4af37]/20 active:scale-95'
             }`}
           >
             {isLoading ? (
               <>
-                <Sparkles className="w-4 h-4 animate-spin" />
+                <Sparkles className="w-4 h-4 animate-spin text-[#d4af37]" />
                 <span>Analyzing & Tracing...</span>
               </>
             ) : (
               <>
-                <Play className="w-4 h-4 fill-white" />
+                <Play className="w-4 h-4 fill-[#0a0a0e]" />
                 <span>Run & Visualize</span>
               </>
             )}
@@ -134,7 +134,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
             tabSize: 4,
             automaticLayout: true,
             padding: { top: 12, bottom: 12 },
-            fontFamily: "'Fira Code', 'JetBrains Mono', 'Menlo', monospace",
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
           }}
         />
       </div>
