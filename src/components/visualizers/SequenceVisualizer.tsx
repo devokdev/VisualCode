@@ -6,6 +6,7 @@ interface SequenceVisualizerProps {
   arrayState?: ArrayElementData[] | null;
   matrixState?: MatrixState | null;
   stepExplanation?: string;
+  variables?: Record<string, any>;
 }
 
 export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
@@ -13,9 +14,38 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
   arrayState,
   matrixState,
   stepExplanation,
+  variables = {},
 }) => {
+  // If arrayState is not explicitly returned, auto-extract any arrays from active variables (e.g. nums, nums2, arr)
+  let effectiveArrayState: ArrayElementData[] = (arrayState && arrayState.length > 0) ? arrayState : [];
+  
+  if (effectiveArrayState.length === 0 && variables) {
+    const arrayVarKey = Object.keys(variables).find(
+      (k) => Array.isArray(variables[k]) && variables[k].length > 0
+    );
+    if (arrayVarKey) {
+      const rawArr = variables[arrayVarKey] as any[];
+      const pointersByIdx: Record<number, string[]> = {};
+
+      // Check for pointer variables (i, j, k, left, right, mid, etc.)
+      Object.entries(variables).forEach(([vName, vVal]) => {
+        if (typeof vVal === 'number' && vVal >= 0 && vVal < rawArr.length && vName !== arrayVarKey) {
+          if (!pointersByIdx[vVal]) pointersByIdx[vVal] = [];
+          pointersByIdx[vVal].push(vName);
+        }
+      });
+
+      effectiveArrayState = rawArr.map((item, idx) => ({
+        index: idx,
+        val: typeof item === 'object' ? JSON.stringify(item) : item,
+        pointers: pointersByIdx[idx] || [],
+        status: pointersByIdx[idx] && pointersByIdx[idx].length > 0 ? 'active' : 'default',
+      }));
+    }
+  }
+
   const hasLinkedList = Boolean(linkedListState && linkedListState.length > 0);
-  const hasArray = Boolean(arrayState && arrayState.length > 0);
+  const hasArray = effectiveArrayState.length > 0;
   const hasMatrix = Boolean(matrixState && matrixState.grid && matrixState.grid.length > 0);
   const hasData = hasLinkedList || hasArray || hasMatrix;
 
@@ -24,7 +54,7 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
       <div className="flex-1 overflow-auto flex flex-col items-center justify-center p-6">
         {!hasData && (
           <div className="text-center text-xs text-[#71717a] p-8">
-            Sequence data structure is empty or being initialized
+            Data structure is initializing...
           </div>
         )}
 
@@ -76,10 +106,10 @@ export const SequenceVisualizer: React.FC<SequenceVisualizerProps> = ({
         )}
 
         {/* Array View */}
-        {hasArray && arrayState && (
+        {hasArray && (
           <div className="flex flex-wrap items-end gap-2 justify-center py-6">
-            {arrayState.map((elem) => {
-              const isActive = elem.status === 'active';
+            {effectiveArrayState.map((elem) => {
+              const isActive = elem.status === 'active' || (elem.pointers && elem.pointers.length > 0);
               const isCompared = elem.status === 'compared';
               return (
                 <div key={elem.index} className="flex flex-col items-center">

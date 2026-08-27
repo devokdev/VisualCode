@@ -15,12 +15,10 @@ export function setApiKey(key: string): void {
 function parseAndRepairJson(rawContent: string): any {
   const trimmed = rawContent.trim();
 
-  // 1. Direct standard parse
   try {
     return JSON.parse(trimmed);
   } catch {}
 
-  // 2. Extract content between markdown code blocks
   const codeBlockMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   const targetStr = codeBlockMatch ? codeBlockMatch[1].trim() : trimmed;
 
@@ -28,12 +26,10 @@ function parseAndRepairJson(rawContent: string): any {
     return JSON.parse(targetStr);
   } catch {}
 
-  // 3. Use dedicated jsonrepair library for unescaped characters, trailing commas, missing quotes/brackets
   try {
     const repaired = jsonrepair(targetStr);
     return JSON.parse(repaired);
   } catch (err1) {
-    // 4. Substring slicing from first '{' to last '}'
     const start = targetStr.indexOf('{');
     const end = targetStr.lastIndexOf('}');
     if (start !== -1 && end !== -1 && end > start) {
@@ -50,7 +46,7 @@ function parseAndRepairJson(rawContent: string): any {
   throw new Error('Could not parse AI response. Please try re-running.');
 }
 
-async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 2500): Promise<any> {
+async function callOpenRouter(messages: { role: string; content: string }[], jsonMode = true, maxTokens = 2800): Promise<any> {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('Missing API Key. Please click the "API Key" button at the top right to configure your OpenRouter API Key.');
@@ -92,9 +88,16 @@ async function callOpenRouter(messages: { role: string; content: string }[], jso
 
 export async function fetchLeetCodeProblem(query: string): Promise<ProblemContext> {
   const prompt = `You are a LeetCode problem scraper and data structures expert.
-Given the user query (which can be a problem title like "Validate Binary Search Tree", a problem number like "98", a slug like "validate-binary-search-tree", or a concept), return the complete structured problem context.
+Given the user query (which can be a problem title like "Rotate Array", a problem number like "189", or a concept), return the complete structured problem context.
 
 Query: "${query}"
+
+CRITICAL RULE FOR dataStructureType:
+- If the problem involves arrays, lists, rotations, two pointers, sliding window, sorting, prefix sums: set "dataStructureType": "array"
+- If tree/BST: "tree" | "bst"
+- If graph/BFS/DFS on graph: "graph"
+- If linked list: "linked_list"
+- If 2D grid/matrix: "matrix"
 
 Respond with ONLY a valid JSON object matching this TypeScript structure:
 {
@@ -136,11 +139,13 @@ export async function analyzeAndTraceExecution(
   const activeInput = customInput || problem.examples[0]?.input || 'default test case';
   const expectedOutput = problem.examples[0]?.output || '';
 
+  const dsType = problem.dataStructureType || 'array';
+
   const prompt = `You are a code execution simulator and AST visualizer for LeetCode problems in Python, Java, and C++.
 
 PROBLEM:
 Title: ${problem.title}
-Data Structure: ${problem.dataStructureType}
+Data Structure: ${dsType}
 Description: ${problem.description}
 Test Input to Execute: ${activeInput}
 Expected Output: ${expectedOutput}
@@ -152,17 +157,22 @@ ${code}
 
 INSTRUCTIONS:
 1. Classify error type:
-   - 'syntax': Unparseable, compiler/syntax errors, missing brackets/semicolons.
-   - 'semantic': Crashes during runtime (e.g. NullPointerException, out of bounds, stack overflow).
-   - 'logical': Runs without crashing, but output / state is incorrect.
-   - 'none': Correct logic and produces expected output.
+   - 'syntax': Compiler/syntax error, missing semicolons/brackets.
+   - 'semantic': Runtime crashes (NullPointerException, out of bounds, infinite loop).
+   - 'logical': Runs cleanly, but output/state is incorrect.
+   - 'none': Correct logic and passes expected output.
 
 2. Step-by-step Execution Trace:
-   - Provide between 4 to 12 concise key execution steps.
-   - Trace variables, call stack, and data structure state on each step.
-   - Keep string explanations clean and concise (1 sentence).
+   - Provide 4 to 12 concise key execution steps.
+   - For EACH step, MUST populate the matching data structure state for "${dsType}":
+     * If "${dsType}" is "array": you MUST populate "arrayState" as an array of objects: [{ "index": 0, "val": 1, "pointers": ["i"], "status": "active" }, { "index": 1, "val": 2, "pointers": [], "status": "default" }] showing the current array values and where any pointers/indices (i, j, k, left, right) are.
+     * If "${dsType}" is "tree" or "bst": populate "treeState" with { id, val, pointers, status, left, right }.
+     * If "${dsType}" is "linked_list": populate "linkedListState" with [{ id, val, pointers, status }].
+     * If "${dsType}" is "graph": populate "graphState" with { nodes, edges }.
+     * If "${dsType}" is "matrix": populate "matrixState" with { rows, cols, grid: [[{ val, status, pointers }]] }.
+   - Always populate "variables" with active local variable values (e.g. { "i": 3, "k": 3 }).
 
-3. Return ONLY a valid JSON object in this format:
+3. Return ONLY a valid JSON object matching this schema:
 {
   "errorClassification": {
     "type": "syntax" | "semantic" | "logical" | "none",
@@ -179,21 +189,17 @@ INSTRUCTIONS:
   "steps": [
     {
       "step": 1,
-      "line": 16,
+      "line": 4,
       "explanation": "Brief description of action",
-      "variables": { "root": 1 },
-      "callStack": [{ "functionName": "rightSideView", "args": { "root": 1 }, "depth": 1 }],
-      "treeState": {
-        "id": "1",
-        "val": 1,
-        "pointers": ["root", "curr"],
-        "status": "active",
-        "left": { "id": "2", "val": 2, "pointers": [], "status": "default", "left": null, "right": null },
-        "right": { "id": "3", "val": 3, "pointers": [], "status": "default", "left": null, "right": null }
-      },
+      "variables": { "i": 0, "k": 3 },
+      "callStack": [{ "functionName": "rotate", "args": {}, "depth": 1 }],
+      "treeState": null,
       "graphState": null,
       "linkedListState": null,
-      "arrayState": null,
+      "arrayState": [
+        { "index": 0, "val": 1, "pointers": ["i"], "status": "active" },
+        { "index": 1, "val": 2, "pointers": [], "status": "default" }
+      ],
       "matrixState": null,
       "stdout": null,
       "returnValue": null
@@ -202,7 +208,7 @@ INSTRUCTIONS:
 }`;
 
   const messages = [
-    { role: 'system', content: 'You are a high-precision code tracer that always responds in valid, parsable JSON.' },
+    { role: 'system', content: 'You are a high-precision code tracer that always returns valid JSON and always populates arrayState, treeState, or graphState according to the problem dataStructureType.' },
     { role: 'user', content: prompt }
   ];
 

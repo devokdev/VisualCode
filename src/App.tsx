@@ -149,6 +149,7 @@ export function App() {
         arrayState={activeStep?.arrayState}
         matrixState={activeStep?.matrixState}
         stepExplanation={activeStep?.explanation}
+        variables={activeStep?.variables}
       />
     );
   };
