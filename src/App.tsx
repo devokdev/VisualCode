@@ -421,22 +421,21 @@ export function App() {
             </Group>
           </div>
 
-          {/* Bottom Floating Timeline Bar */}
+          {/* Bottom Stepping Controls Timeline Bar */}
           <FloatingTimeline
             currentStep={currentStepIndex}
             totalSteps={traceResult?.steps?.length || 0}
-            isPlaying={isPlaying}
-            onPlayToggle={() => setIsPlaying(!isPlaying)}
             onStepForward={() =>
               setCurrentStepIndex((prev) =>
                 Math.min(prev + 1, (traceResult?.steps?.length || 1) - 1)
               )
             }
             onStepBack={() => setCurrentStepIndex((prev) => Math.max(prev - 1, 0))}
-            onReset={() => setCurrentStepIndex(0)}
+            onFirst={() => setCurrentStepIndex(0)}
+            onLast={() =>
+              setCurrentStepIndex(Math.max(0, (traceResult?.steps?.length || 1) - 1))
+            }
             onScrub={(idx) => setCurrentStepIndex(idx)}
-            speed={speed}
-            onSpeedChange={setSpeed}
           />
         </div>
       )}
