@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { ProblemContext, Language, ExecutionAnalysisResult } from './types';
-import { fetchLeetCodeProblem, diagnoseExecutionError } from './services/openrouter';
+import { diagnoseExecutionError } from './services/openrouter';
+import { scrapeLeetCodeProblem } from './services/leetcodeScraper';
 import { traceDeterministically } from './services/deterministicTracer';
 import { TopBar } from './components/TopBar';
 import { CodeEditor } from './components/CodeEditor';
+import { CustomInputConsole } from './components/CustomInputConsole';
 import { CompactErrorBanner } from './components/CompactErrorBanner';
 import { FloatingTimeline } from './components/FloatingTimeline';
 import { DebugPanel } from './components/visualizers/DebugPanel';
@@ -15,7 +17,7 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { ProblemStatementModal } from './components/ProblemStatementModal';
 import { Sparkles, GitBranch, FileText, Box, Layers, Terminal } from 'lucide-react';
 
-const DEFAULT_PROBLEM_QUERY = '199. Binary Tree Right Side View';
+const DEFAULT_PROBLEM_QUERY = '189. Rotate Array';
 
 export function App() {
   const [currentTab, setCurrentTab] = useState<'editor' | 'problems'>('editor');
@@ -46,10 +48,12 @@ export function App() {
   const handleFetchProblem = async (query: string) => {
     setIsLoadingProblem(true);
     try {
-      const data = await fetchLeetCodeProblem(query);
+      // Fetch directly from LeetCode GraphQL / Scraper
+      const data = await scrapeLeetCodeProblem(query);
       setProblem(data);
       setCode(data.starterCode[language] || data.starterCode.java || data.starterCode.python);
-      setActiveInput(data.examples[0]?.input || '');
+      const initialInput = data.examples[0]?.input || '';
+      setActiveInput(initialInput);
       setTraceResult(null);
       setCurrentStepIndex(0);
       setIsPlaying(false);
@@ -198,15 +202,26 @@ export function App() {
           {/* Resizable 3-Panel Workspace (LeetCode style resizable splitters) */}
           <div className="flex-1 min-h-0 overflow-hidden relative">
             <Group orientation="horizontal" className="h-full w-full">
-              {/* Left Panel: Monaco Code Editor */}
+              {/* Left Panel: Monaco Code Editor + Test Case Input Console */}
               <Panel defaultSize="55%" minSize="25%" className="h-full flex flex-col min-w-0">
-                <CodeEditor
-                  code={code}
-                  onChange={(val) => setCode(val || '')}
-                  language={language}
-                  onResetStarter={handleResetStarter}
-                  activeLine={activeStep?.line}
-                  nextLine={nextStep?.line}
+                <div className="flex-1 min-h-0">
+                  <CodeEditor
+                    code={code}
+                    onChange={(val) => setCode(val || '')}
+                    language={language}
+                    onResetStarter={handleResetStarter}
+                    activeLine={activeStep?.line}
+                    nextLine={nextStep?.line}
+                  />
+                </div>
+
+                {/* Custom Input & Testcase Console */}
+                <CustomInputConsole
+                  problem={problem}
+                  activeInput={activeInput}
+                  onApplyInput={(newInput) => setActiveInput(newInput)}
+                  onRun={handleRunAndTrace}
+                  isLoading={isTracing}
                 />
               </Panel>
 
