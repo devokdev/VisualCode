@@ -89,9 +89,9 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   }, [activeLine, nextLine]);
 
   return (
-    <div className="flex flex-col h-full bg-[#1a1a1a] relative select-none">
+    <div className="flex flex-col h-full w-full min-h-0 bg-[#1a1a1a] relative select-none overflow-hidden">
       {/* Editor Header Bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-[#242424] border-b border-[#333333]">
+      <div className="flex items-center justify-between px-4 py-2 bg-[#242424] border-b border-[#333333] shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono font-semibold text-[#8c8c8c] uppercase">{language}</span>
           {activeLine && (
@@ -119,7 +119,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       </div>
 
       {/* Monaco Editor */}
-      <div className="flex-1 w-full h-full relative">
+      <div className="flex-1 w-full min-h-0 relative">
         <Editor
           height="100%"
           language={monacoLanguage}

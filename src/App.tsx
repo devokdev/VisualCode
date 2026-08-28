@@ -203,8 +203,8 @@ export function App() {
           <div className="flex-1 min-h-0 overflow-hidden relative">
             <Group orientation="horizontal" className="h-full w-full">
               {/* Left Panel: Monaco Code Editor + Test Case Input Console */}
-              <Panel defaultSize="55%" minSize="25%" className="h-full flex flex-col min-w-0">
-                <div className="flex-1 min-h-0">
+              <Panel defaultSize="55%" minSize="25%" className="h-full flex flex-col min-w-0 overflow-hidden">
+                <div className="flex-1 min-h-0 relative overflow-hidden">
                   <CodeEditor
                     code={code}
                     onChange={(val) => setCode(val || '')}
