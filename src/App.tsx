@@ -4,7 +4,7 @@ import { Group, Panel, Separator } from 'react-resizable-panels';
 import type { ProblemContext, Language, ExecutionAnalysisResult } from './types';
 import { diagnoseExecutionError } from './services/openrouter';
 import { scrapeLeetCodeProblem } from './services/leetcodeScraper';
-import { traceDeterministically } from './services/deterministicTracer';
+import { traceDeterministically, traceNativeRuntime } from './services/deterministicTracer';
 import { TopBar } from './components/TopBar';
 import { CodeEditor } from './components/CodeEditor';
 import { CustomInputConsole } from './components/CustomInputConsole';
@@ -101,8 +101,8 @@ export function App() {
     setIsTracing(true);
     setIsPlaying(false);
     try {
-      // 1. Run deterministic local execution tracer (instant, zero-latency, full loop steps)
-      const localResult = traceDeterministically(problem, code, language, activeInput);
+      // 1. Run native runtime debugger tracer (Python sys.settrace, Java JDI, C++ GDB/MI) with fallback
+      const localResult = await traceNativeRuntime(problem, code, language, activeInput);
       setTraceResult(localResult);
       setCurrentStepIndex(0);
       triggerSubtleConfetti();

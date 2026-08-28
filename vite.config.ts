@@ -17,6 +17,10 @@ export default defineConfig({
           'Origin': 'https://leetcode.com',
         },
       },
+      '/api/trace': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
     },
   },
 })
