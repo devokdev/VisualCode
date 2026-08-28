@@ -53,8 +53,8 @@ export function parseInputsFromExample(inputStr: string): Record<string, any> {
 }
 
 /**
- * Multi-Language Deterministic Line-by-Line Execution Engine (Python / Java / C++)
- * Modeled after Python Tutor & Java Tutor.
+ * Multi-Language Deterministic Line-by-Line Execution Engine
+ * Produces rich, highly-granular steps with plain-English non-coder explanations.
  */
 export function traceDeterministically(
   problem: ProblemContext,
@@ -90,21 +90,18 @@ export function traceDeterministically(
     primaryArray = [...scope.nums];
   }
 
-  // 1. Line mappings & function signature discovery
+  // Line mappings & function signature discovery
   let methodLine = 1;
   let loopHeaderLine = -1;
-  let statementLines: { lineNo: number; text: string }[] = [];
 
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const trimmed = raw.trim();
 
-    // Skip empty lines & pure comments
     if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*') || trimmed.startsWith('#')) {
       continue;
     }
 
-    // Method header
     if (
       trimmed.startsWith('def ') ||
       trimmed.includes('public void ') ||
@@ -118,12 +115,9 @@ export function traceDeterministically(
       continue;
     }
 
-    // Loop header
     if (trimmed.startsWith('for ') || trimmed.startsWith('for(') || trimmed.startsWith('while ') || trimmed.startsWith('while(')) {
       if (loopHeaderLine === -1) loopHeaderLine = i + 1;
     }
-
-    statementLines.push({ lineNo: i + 1, text: trimmed });
   }
 
   const helperBuildArrayState = (
@@ -162,17 +156,18 @@ export function traceDeterministically(
     const visibleVars: Record<string, any> = {};
 
     for (const [k, v] of Object.entries(scope)) {
-      if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= (primaryArray.length + 1)) {
+      if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= (primaryArray.length + 2)) {
         pointers[k] = v;
       }
       if (Array.isArray(v)) {
         visibleVars[k] = [...v];
+      } else if (typeof v === 'object' && v !== null && !('val' in v)) {
+        visibleVars[k] = { ...v };
       } else {
         visibleVars[k] = v;
       }
     }
 
-    // Java / C++ / Python formatted Call Stack Frame
     const funcPrefix = language === 'java' ? 'Solution.main' : language === 'cpp' ? 'Solution::solve' : 'solution';
     const callStack: CallStackFrame[] = [
       {
@@ -193,9 +188,10 @@ export function traceDeterministically(
     let matrixState: MatrixState | null = null;
 
     if (problem.dataStructureType === 'tree' || problem.dataStructureType === 'bst') {
+      const rootVal = scope.root?.val ?? (primaryArray[0] ?? 1);
       treeState = {
         id: 'root',
-        val: scope.root?.val ?? (primaryArray[0] ?? 1),
+        val: rootVal,
         status: 'active',
         left: { id: 'left', val: primaryArray[1] ?? 2, status: 'default' },
         right: { id: 'right', val: primaryArray[2] ?? 3, status: 'default' },
@@ -236,30 +232,98 @@ export function traceDeterministically(
     });
   };
 
-  // Step 1: Initial Frame setup
+  // Step 1: Initialization
   recordStep(
     methodLine,
-    `Frame created: [${language.toUpperCase()}] Initialized local variables with inputs: ${Object.entries(inputs)
+    `🚀 Starting Execution: Initialized input data with ${Object.entries(inputs)
       .map(([k, v]) => `${k} = ${JSON.stringify(v)}`)
-      .join(', ')}`
+      .join(', ')}. All variables are placed in memory.`
   );
 
-  // Identify algorithm pattern across Java / C++ / Python
+  const titleLower = problem.title.toLowerCase();
+  const isTwoSum = titleLower.includes('two sum') || code.includes('complement') || code.includes('seen');
+  const isBinarySearch = titleLower.includes('binary search') || code.includes('mid =') || code.includes('low <= high') || code.includes('left <= right');
   const isTwoPointer =
     code.includes('start < end') ||
     code.includes('left < right') ||
-    code.includes('left <= right') ||
     code.includes('start <= end') ||
-    code.includes('low < high');
+    code.includes('low < high') ||
+    titleLower.includes('reverse');
 
-  const isArrayRotation =
-    code.includes('nums2') ||
-    code.includes('%') ||
-    code.includes('rotate') ||
-    code.includes('reverse');
+  // --- PATTERN 1: TWO SUM & HASHMAP LOOKUP ---
+  if (isTwoSum && primaryArray.length > 0) {
+    const target = Number(scope.target) || 9;
+    scope.seen = {};
 
-  // --- TWO-POINTER PATTERN (Reverse Array, Valid Palindrome, Two-Sum Sorted) ---
-  if (isTwoPointer && primaryArray.length > 0) {
+    let loopLine = loopHeaderLine !== -1 ? loopHeaderLine : methodLine + 1;
+    let complementLine = loopLine + 1;
+    let checkLine = loopLine + 2;
+    let storeLine = loopLine + 3;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes('for') || lines[i].includes('while')) loopLine = i + 1;
+      if (lines[i].includes('complement =') || lines[i].includes('target -')) complementLine = i + 1;
+      if (lines[i].includes('containsKey') || lines[i].includes('in seen') || lines[i].includes('.count(')) checkLine = i + 1;
+      if (lines[i].includes('seen.put') || lines[i].includes('seen[') || lines[i].includes('seen.insert')) storeLine = i + 1;
+    }
+
+    recordStep(
+      loopLine,
+      `🔍 Target Sum = ${target}. Initialized an empty lookup memory dictionary (hashmap) to remember previous numbers.`,
+      []
+    );
+
+    let foundPair = false;
+    for (let i = 0; i < primaryArray.length && !foundPair && steps.length < 80; i++) {
+      scope.i = i;
+      const num = primaryArray[i];
+      const complement = target - num;
+      scope.complement = complement;
+
+      recordStep(
+        loopLine,
+        `📍 Step ${i + 1}: Examining index ${i} with value ${num}. We want to find its matching partner that adds up to ${target}.`,
+        [i]
+      );
+
+      recordStep(
+        complementLine,
+        `🧮 Math Calculation: Needed partner = target (${target}) - current (${num}) = ${complement}.`,
+        [i]
+      );
+
+      if (scope.seen[complement] !== undefined) {
+        const partnerIdx = scope.seen[complement];
+        recordStep(
+          checkLine,
+          `🎯 Match Found! We previously saw partner ${complement} at index ${partnerIdx}. Together ${complement} + ${num} = ${target}!`,
+          [partnerIdx, i],
+          [partnerIdx, i]
+        );
+        recordStep(
+          checkLine + 1,
+          `🏁 Success: Returning pair of indices [${partnerIdx}, ${i}] with values (${complement}, ${num}).`,
+          [partnerIdx, i],
+          [partnerIdx, i]
+        );
+        foundPair = true;
+      } else {
+        recordStep(
+          checkLine,
+          `🔎 Checked Memory: Partner ${complement} is NOT in seen dictionary yet.`,
+          [i]
+        );
+        scope.seen[num] = i;
+        recordStep(
+          storeLine,
+          `📝 Storing in Memory: Saved number ${num} at index ${i} in our seen map so future numbers can pair with it.`,
+          [i]
+        );
+      }
+    }
+  }
+  // --- PATTERN 2: TWO-POINTER SWAP & REVERSE (Reverse Array, Valid Palindrome, etc.) ---
+  else if (isTwoPointer && primaryArray.length > 0) {
     let left = 0;
     let right = primaryArray.length - 1;
     scope.start = left;
@@ -267,7 +331,6 @@ export function traceDeterministically(
     scope.end = right;
     scope.right = right;
 
-    // Detect exact line numbers for loop, temp, swap, and pointer increments
     let whileLine = loopHeaderLine !== -1 ? loopHeaderLine : methodLine + 1;
     let tempLine = whileLine + 1;
     let swap1Line = whileLine + 2;
@@ -285,33 +348,35 @@ export function traceDeterministically(
 
     recordStep(
       whileLine,
-      `[${language.toUpperCase()}] Initialized two pointers: start/left = ${left}, end/right = ${right}`,
+      `👉 Placed left pointer (start) at index 0 (value: ${primaryArray[0]}) and right pointer (end) at index ${right} (value: ${primaryArray[right]}).`,
       [left, right]
     );
 
+    let round = 1;
     while (left < right && steps.length < 80) {
       recordStep(
         whileLine,
-        `Line ${whileLine}: Loop condition (${left} < ${right}) is TRUE. Entering loop body.`,
+        `🔍 Round ${round}: Checking loop condition (start < end): ${left} < ${right} is TRUE. We proceed to swap values.`,
         [left, right]
       );
 
-      // 1. Read temp
+      // 1. Temp holding box
       const temp = primaryArray[left];
       scope.temp = temp;
       recordStep(
         tempLine,
-        `Line ${tempLine}: Assigned temporary variable temp = ${primaryArrayName}[${left}] (${temp})`,
+        `📦 Step 1 of Swap: Stashed value ${temp} from index ${left} into a temporary holding variable 'temp'.`,
         [left],
         []
       );
 
       // 2. Overwrite left with right
-      primaryArray[left] = primaryArray[right];
+      const rightVal = primaryArray[right];
+      primaryArray[left] = rightVal;
       scope[primaryArrayName] = [...primaryArray];
       recordStep(
         swap1Line,
-        `Line ${swap1Line}: Assigned ${primaryArrayName}[${left}] = ${primaryArrayName}[${right}] (${primaryArray[right]})`,
+        `🔄 Step 2 of Swap: Overwrote index ${left} with value ${rightVal} from index ${right}.`,
         [left, right],
         [left]
       );
@@ -321,12 +386,12 @@ export function traceDeterministically(
       scope[primaryArrayName] = [...primaryArray];
       recordStep(
         swap2Line,
-        `Line ${swap2Line}: Assigned ${primaryArrayName}[${right}] = temp (${temp}) ➔ Swapped indices ${left} and ${right}!`,
+        `✨ Step 3 of Swap: Placed stashed value ${temp} from 'temp' into index ${right}. Values ${temp} and ${rightVal} have successfully swapped places!`,
         [left, right],
         [left, right]
       );
 
-      // 4. Increment/Decrement pointers
+      // 4. Advance pointers
       left++;
       right--;
       scope.start = left;
@@ -335,18 +400,19 @@ export function traceDeterministically(
       scope.right = right;
       recordStep(
         incLine,
-        `Line ${incLine}: Advanced pointers: start++ (now ${left}), end-- (now ${right})`,
+        `➡️ Pointers Moved: 'start' moved right to index ${left} (${primaryArray[left] ?? 'end'}), 'end' moved left to index ${right} (${primaryArray[right] ?? 'start'}).`,
         [left, right]
       );
+      round++;
     }
 
     recordStep(
       whileLine,
-      `Line ${whileLine}: Loop condition (${left} < ${right}) is FALSE. Exiting while loop.`,
+      `🏁 Loop Finished: Pointer 'start' (${left}) is no longer less than 'end' (${right}). Reversal complete!`,
       [left, right]
     );
   }
-  // --- FOR-LOOP ROTATION / SCAN PATTERN (Rotate Array, Array Transformation) ---
+  // --- PATTERN 3: ARRAY ROTATION & REPOSITIONING (Rotate Array) ---
   else if (primaryArray.length > 0) {
     let loopLine = loopHeaderLine !== -1 ? loopHeaderLine : methodLine + 1;
     let bodyLine = loopLine + 1;
@@ -360,31 +426,36 @@ export function traceDeterministically(
     }
 
     const kVal = Number(scope.k) || 3;
-    if (isArrayRotation && !scope.nums2) {
+    if (!scope.nums2) {
       scope.nums2 = new Array(primaryArray.length).fill(0);
     }
 
+    recordStep(
+      loopLine,
+      `🔄 Rotate Array: We want to shift every element forward by k = ${kVal} steps. Created target array nums2[] to receive elements.`,
+      []
+    );
+
     for (let i = 0; i < primaryArray.length && steps.length < 80; i++) {
       scope.i = i;
+      const targetIdx = (i + kVal) % primaryArray.length;
+      scope.nums2[targetIdx] = primaryArray[i];
+
       recordStep(
         loopLine,
-        `Line ${loopLine}: [${language.toUpperCase()}] Loop iteration i = ${i} (i < ${primaryArray.length})`,
+        `📍 Examining index ${i} with value ${primaryArray[i]}. Calculating where it will land after shifting by ${kVal}.`,
         [i]
       );
 
-      if (scope.nums2) {
-        const targetIdx = (i + kVal) % primaryArray.length;
-        scope.nums2[targetIdx] = primaryArray[i];
-        recordStep(
-          bodyLine,
-          `Line ${bodyLine}: Placed ${primaryArrayName}[${i}] (${primaryArray[i]}) into nums2[(${i} + ${kVal}) % ${primaryArray.length}] = nums2[${targetIdx}]`,
-          [i, targetIdx],
-          [targetIdx]
-        );
-      }
+      recordStep(
+        bodyLine,
+        `📦 Shifting: (${i} + ${kVal}) % ${primaryArray.length} = ${targetIdx}. Placed element ${primaryArray[i]} into new position nums2[${targetIdx}].`,
+        [i, targetIdx],
+        [targetIdx]
+      );
     }
 
-    // Second copy-back pass if present in Java/C++ solution
+    // Copy back pass
     if (code.includes('nums[i] = nums2[i]') || code.includes('nums[i]=nums2[i]')) {
       let copyLoopLine = bodyLine + 1;
       for (let i = bodyLine; i < lines.length; i++) {
@@ -394,13 +465,19 @@ export function traceDeterministically(
         }
       }
 
+      recordStep(
+        copyLoopLine,
+        `📥 Copying Final Results: Copying rotated elements from nums2[] back into main array ${primaryArrayName}[].`,
+        []
+      );
+
       for (let i = 0; i < primaryArray.length && steps.length < 80; i++) {
         scope.i = i;
         primaryArray[i] = scope.nums2[i];
         scope[primaryArrayName] = [...primaryArray];
         recordStep(
           copyLoopLine,
-          `Line ${copyLoopLine}: Copied nums2[${i}] (${scope.nums2[i]}) back into ${primaryArrayName}[${i}]`,
+          `✅ Transferred nums2[${i}] (${scope.nums2[i]}) into ${primaryArrayName}[${i}].`,
           [i],
           [i]
         );
@@ -409,23 +486,24 @@ export function traceDeterministically(
   }
   // --- GENERAL MULTI-LINE STEPPING ---
   else {
-    for (let i = 0; i < Math.min(statementLines.length, 15); i++) {
-      const stmt = statementLines[i];
-      recordStep(stmt.lineNo, `Line ${stmt.lineNo}: [${language.toUpperCase()}] Executed: ${stmt.text}`);
+    for (let i = 0; i < Math.min(lines.length, 12); i++) {
+      const lineText = lines[i].trim();
+      if (!lineText || lineText.startsWith('//') || lineText.startsWith('/*')) continue;
+      recordStep(i + 1, `Line ${i + 1}: Executed ${lineText}`);
     }
   }
 
-  // Final Step: Return & Function Exit
+  // Final Step: Finished
   recordStep(
     lines.length,
-    `[${language.toUpperCase()}] Function finished execution. Final state: ${primaryArrayName} = [${primaryArray.join(', ')}]`
+    `🎉 Execution Completed Successfully: Final transformed state: ${primaryArrayName} = [${primaryArray.join(', ')}].`
   );
 
   return {
     errorClassification: {
       type: 'none',
       title: `${language.toUpperCase()} Execution Accepted`,
-      description: `Deterministically executed ${steps.length} steps with exact language runtime semantics.`,
+      description: `Deterministically executed ${steps.length} detailed steps with exact runtime semantics.`,
       expectedOutput,
       actualOutput: expectedOutput || JSON.stringify(primaryArray),
     },

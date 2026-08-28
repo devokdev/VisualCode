@@ -188,18 +188,24 @@ export const TreeVisualizer: React.FC<TreeVisualizerProps> = ({
   }, [data, onSelectNode]);
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-[#111114] overflow-hidden select-none">
+    <div className="relative w-full h-full flex flex-col bg-[#0e0e12] overflow-hidden select-none">
+      {/* Top Narrative Explanation Card */}
+      {stepExplanation && (
+        <div className="px-6 py-3.5 bg-gradient-to-r from-[#181820] via-[#15151c] to-[#181820] border-b border-white/[0.08] flex items-center justify-between gap-4 shrink-0 shadow-md">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border bg-[#3b82f6]/20 text-[#60a5fa] border-[#3b82f6]/40 shrink-0">
+              🌲 TREE TRAVERSAL
+            </span>
+            <p className="text-xs text-[#e4e4e7] leading-relaxed font-sans font-medium truncate">
+              {stepExplanation}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="w-full flex-1 min-h-[300px] relative">
         <svg ref={svgRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
       </div>
-
-      {stepExplanation && (
-        <div className="px-6 py-2.5 bg-[#14141a] border-t border-white/[0.06] text-xs text-[#d4d4d8] flex items-center gap-3 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-[#ffa116] animate-ping shrink-0" />
-          <span className="font-bold text-[#ffa116] uppercase text-[10px] tracking-wider shrink-0">Action</span>
-          <span className="truncate text-xs text-[#f4f4f5]">{stepExplanation}</span>
-        </div>
-      )}
     </div>
   );
 };
