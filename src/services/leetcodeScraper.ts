@@ -189,28 +189,61 @@ async function sendLeetCodeGraphQL(query: string, variables: Record<string, any>
   throw new Error('Could not connect to LeetCode GraphQL API');
 }
 
+export interface LeetCodeSearchResult {
+  id: string | number;
+  title: string;
+  slug: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  category?: string;
+  tags?: string[];
+}
+
+/**
+ * Searches LeetCode GraphQL in real-time for live autocomplete suggestions
+ */
+export async function searchLeetCodeLive(keyword: string): Promise<LeetCodeSearchResult[]> {
+  if (!keyword || !keyword.trim()) return [];
+
+  try {
+    const data = await sendLeetCodeGraphQL(LEETCODE_SEARCH_QUERY, {
+      categorySlug: '',
+      limit: 8,
+      skip: 0,
+      filters: { searchKeywords: keyword.trim() },
+    });
+
+    const questions = data?.problemsetQuestionList?.questions;
+    if (questions && Array.isArray(questions)) {
+      return questions.map((q: any) => ({
+        id: q.frontendQuestionId || '',
+        title: q.title,
+        slug: q.titleSlug,
+        difficulty: (['Easy', 'Medium', 'Hard'].includes(q.difficulty) ? q.difficulty : 'Medium') as any,
+        tags: Array.isArray(q.topicTags) ? q.topicTags.map((t: any) => t.name) : [],
+        category: q.topicTags?.[0]?.name || 'Algorithm',
+      }));
+    }
+  } catch (err) {
+    console.warn('Live search failed:', err);
+  }
+
+  return [];
+}
+
 /**
  * Search LeetCode to find the exact titleSlug for numbers or keyword searches
  */
 async function searchLeetCodeSlug(keyword: string): Promise<string> {
   try {
-    const data = await sendLeetCodeGraphQL(LEETCODE_SEARCH_QUERY, {
-      categorySlug: '',
-      limit: 5,
-      skip: 0,
-      filters: { searchKeywords: keyword },
-    });
-
-    const questions = data?.problemsetQuestionList?.questions;
-    if (questions && questions.length > 0) {
-      // Try exact number or title match first
-      const exactMatch = questions.find(
-        (q: any) =>
-          q.frontendQuestionId === keyword.trim() ||
+    const liveResults = await searchLeetCodeLive(keyword);
+    if (liveResults && liveResults.length > 0) {
+      const exactMatch = liveResults.find(
+        (q) =>
+          String(q.id) === keyword.trim() ||
           q.title.toLowerCase() === keyword.toLowerCase().trim() ||
-          q.titleSlug === extractSlugFromQuery(keyword)
+          q.slug === extractSlugFromQuery(keyword)
       );
-      return exactMatch ? exactMatch.titleSlug : questions[0].titleSlug;
+      return exactMatch ? exactMatch.slug : liveResults[0].slug;
     }
   } catch (err) {
     console.warn('LeetCode search fallback to direct slug:', err);

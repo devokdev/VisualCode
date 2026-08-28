@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, BookOpen, ArrowRight, Sparkles, AlertCircle } from 'lucide-react';
+import { LEETCODE_POPULAR_CATALOG, type CatalogProblem } from '../data/leetcodeCatalog';
 
 interface ProblemsListViewProps {
   onSelectProblem: (query: string) => void;
@@ -7,25 +8,6 @@ interface ProblemsListViewProps {
   onFetchDynamicProblem: (query: string) => Promise<void>;
   isLoading: boolean;
 }
-
-const CURATED_PROBLEMS = [
-  { id: 98, title: 'Validate Binary Search Tree', difficulty: 'Medium' as const, category: 'Tree / BST' },
-  { id: 199, title: 'Binary Tree Right Side View', difficulty: 'Medium' as const, category: 'Tree / BFS / DFS' },
-  { id: 226, title: 'Invert Binary Tree', difficulty: 'Easy' as const, category: 'Tree' },
-  { id: 104, title: 'Maximum Depth of Binary Tree', difficulty: 'Easy' as const, category: 'Tree / DFS' },
-  { id: 700, title: 'Search in a Binary Search Tree', difficulty: 'Easy' as const, category: 'Tree / BST' },
-  { id: 701, title: 'Insert into a Binary Search Tree', difficulty: 'Medium' as const, category: 'Tree / BST' },
-  { id: 235, title: 'Lowest Common Ancestor of a BST', difficulty: 'Medium' as const, category: 'Tree / BST' },
-  { id: 200, title: 'Number of Islands', difficulty: 'Medium' as const, category: 'Graph / BFS / DFS' },
-  { id: 133, title: 'Clone Graph', difficulty: 'Medium' as const, category: 'Graph' },
-  { id: 206, title: 'Reverse Linked List', difficulty: 'Easy' as const, category: 'Linked List' },
-  { id: 141, title: 'Linked List Cycle', difficulty: 'Easy' as const, category: 'Linked List' },
-  { id: 146, title: 'LRU Cache', difficulty: 'Hard' as const, category: 'Linked List / Design' },
-  { id: 1, title: 'Two Sum', difficulty: 'Easy' as const, category: 'Array / Hash Table' },
-  { id: 15, title: '3Sum', difficulty: 'Medium' as const, category: 'Array / Two Pointers' },
-  { id: 11, title: 'Container With Most Water', difficulty: 'Medium' as const, category: 'Array / Two Pointers' },
-  { id: 42, title: 'Trapping Rain Water', difficulty: 'Hard' as const, category: 'Array / Two Pointers / Stack' },
-];
 
 export const ProblemsListView: React.FC<ProblemsListViewProps> = ({
   onSelectProblem,
@@ -36,7 +18,7 @@ export const ProblemsListView: React.FC<ProblemsListViewProps> = ({
   const [filter, setFilter] = useState<'All' | 'Easy' | 'Medium' | 'Hard'>('All');
   const [search, setSearch] = useState('');
 
-  const filtered = CURATED_PROBLEMS.filter((p) => {
+  const filtered = LEETCODE_POPULAR_CATALOG.filter((p) => {
     const matchesFilter = filter === 'All' || p.difficulty === filter;
     const matchesSearch = p.title.toLowerCase().includes(search.toLowerCase()) || String(p.id).includes(search);
     return matchesFilter && matchesSearch;
