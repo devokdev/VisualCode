@@ -97,6 +97,8 @@ function evaluateExpression(expr: string, scope: Record<string, any>): any {
   } catch {
     return undefined;
   }
+}
+
 /**
  * Executes code using real Native Debugger Tracers (Python sys.settrace, Java JDI, C++ GDB/MI)
  * with automatic fallback to local high-precision simulation.
