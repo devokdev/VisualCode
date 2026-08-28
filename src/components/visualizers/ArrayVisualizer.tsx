@@ -26,11 +26,21 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
   const hasSingleArray = Boolean(arrayState && arrayState.length > 0);
   const hasMatrix = Boolean(matrixState && matrixState.grid && matrixState.grid.length > 0);
 
-  // Extract hash map if present (e.g. in Two Sum)
-  const seenMap: Record<string, any> | null =
-    currentStep?.variables?.seen && typeof currentStep.variables.seen === 'object'
-      ? currentStep.variables.seen
-      : null;
+  // Extract any map/dictionary objects dynamically declared in the user's code
+  const mapObjects: { name: string; entries: [string, any][] }[] = [];
+  if (currentStep?.variables) {
+    Object.entries(currentStep.variables).forEach(([k, v]) => {
+      if (
+        v &&
+        typeof v === 'object' &&
+        !Array.isArray(v) &&
+        !('val' in v) &&
+        Object.keys(v).length > 0
+      ) {
+        mapObjects.push({ name: k, entries: Object.entries(v) });
+      }
+    });
+  }
 
   // Determine plain-English action category from explanation
   const explanation = currentStep?.explanation || stepExplanation || 'Executing step...';
@@ -248,9 +258,10 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
           </div>
         )}
 
-        {/* 3. Hash Map / Lookup Table View (if present, e.g. Two Sum) */}
-        {seenMap && Object.keys(seenMap).length > 0 && (
+        {/* 3. Dynamic Hash Map / Memory Tables (rendered ONLY if user declared a map object in code) */}
+        {mapObjects.map((m) => (
           <motion.div
+            key={m.name}
             layout
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -259,27 +270,27 @@ export const ArrayVisualizer: React.FC<ArrayVisualizerProps> = ({
             <div className="flex items-center gap-2">
               <Database className="w-4 h-4 text-[#a855f7]" />
               <span className="text-xs font-mono font-bold text-[#f4f4f5]">
-                Lookup Memory Table (`seen` Hash Map)
+                {m.name} (Hash Map / Object)
               </span>
               <span className="text-[10px] text-[#71717a] font-mono">
-                {Object.keys(seenMap).length} stored entries
+                {m.entries.length} entries
               </span>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {Object.entries(seenMap).map(([k, v]) => (
+              {m.entries.map(([k, v]) => (
                 <div
                   key={k}
                   className="px-3 py-1.5 rounded-lg bg-[#1f1a29] border border-[#a855f7]/30 text-xs font-mono flex items-center gap-2 shadow-sm"
                 >
-                  <span className="text-[#c084fc] font-bold">Number: {k}</span>
+                  <span className="text-[#c084fc] font-bold">{k}</span>
                   <ArrowRight className="w-3 h-3 text-[#71717a]" />
-                  <span className="text-[#f4f4f5]">Index: [{String(v)}]</span>
+                  <span className="text-[#f4f4f5]">{JSON.stringify(v)}</span>
                 </div>
               ))}
             </div>
           </motion.div>
-        )}
+        ))}
       </div>
     </div>
   );

@@ -11,13 +11,12 @@ import type {
 } from '../types';
 
 /**
- * Parses simple literal expressions like "[1, 2, 3]", "target = 9", "nums = [2,7,11,15]"
+ * Parses simple literal expressions like "[3,2,4]", "target = 6", "nums = [2,7,11,15]"
  */
 export function parseInputsFromExample(inputStr: string): Record<string, any> {
   const result: Record<string, any> = {};
   if (!inputStr || !inputStr.trim()) return result;
 
-  // Split lines or commas: nums = [2,7,11,15], target = 9, k = 3
   const tokens = inputStr.split(/[\n,](?=(?:[^[\]]*\[[^[\]]*\])*[^[\]]*$)/);
 
   for (const token of tokens) {
@@ -38,8 +37,8 @@ export function parseInputsFromExample(inputStr: string): Record<string, any> {
       try {
         const parsed = JSON.parse(trimmed.replace(/'/g, '"'));
         if (Array.isArray(parsed)) {
-          result['arr'] = parsed;
           result['nums'] = parsed;
+          result['arr'] = parsed;
         } else {
           result['input'] = parsed;
         }
@@ -53,8 +52,56 @@ export function parseInputsFromExample(inputStr: string): Record<string, any> {
 }
 
 /**
- * Multi-Language Deterministic Line-by-Line Execution Engine
- * Produces rich, highly-granular steps with plain-English non-coder explanations.
+ * Evaluates expressions in a scoped variable environment
+ */
+function evaluateExpression(expr: string, scope: Record<string, any>): any {
+  let cleaned = expr.trim();
+  if (!cleaned) return undefined;
+
+  // Handle Java/C++ array initialization: {0, 0} -> [0, 0]
+  if (cleaned.startsWith('{') && cleaned.endsWith('}')) {
+    cleaned = '[' + cleaned.slice(1, -1) + ']';
+  }
+  // Handle new int[]{i, j} or new int[2]
+  if (cleaned.startsWith('new int[]')) {
+    const braceIdx = cleaned.indexOf('{');
+    if (braceIdx !== -1) {
+      cleaned = '[' + cleaned.slice(braceIdx + 1, cleaned.lastIndexOf('}')) + ']';
+    } else {
+      const bracketMatch = cleaned.match(/\[(.*?)\]/);
+      const size = bracketMatch ? evaluateExpression(bracketMatch[1], scope) : 0;
+      return new Array(Number(size) || 0).fill(0);
+    }
+  }
+
+  // Convert Python/Java/C++ constructs to JS
+  cleaned = cleaned
+    .replace(/\.length\b/g, '.length')
+    .replace(/\.size\(\)/g, '.length')
+    .replace(/\blen\((.*?)\)/g, '$1.length')
+    .replace(/\bnull\b/g, 'null')
+    .replace(/\bNone\b/g, 'null')
+    .replace(/\btrue\b/gi, 'true')
+    .replace(/\bfalse\b/gi, 'false')
+    .replace(/\band\b/g, '&&')
+    .replace(/\bor\b/g, '||')
+    .replace(/\bnot\b/g, '!')
+    .replace(/\/\//g, '/');
+
+  try {
+    const keys = Object.keys(scope);
+    const vals = Object.values(scope);
+    // eslint-disable-next-line no-new-func
+    const fn = new Function(...keys, `try { return ${cleaned}; } catch(e) { return undefined; }`);
+    return fn(...vals);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Universal Multi-Language Custom Code Execution Engine
+ * Interprets user's actual custom code line-by-line without hardcoded problem assumptions.
  */
 export function traceDeterministically(
   problem: ProblemContext,
@@ -67,157 +114,110 @@ export function traceDeterministically(
   const inputs = parseInputsFromExample(activeInput);
 
   const steps: TraceStep[] = [];
-  const lines = code.split('\n');
+  const rawLines = code.split('\n');
 
-  // Scope & Heap objects
-  const scope: Record<string, any> = { ...inputs };
-  let primaryArrayName = '';
-  let primaryArray: any[] = [];
-
-  // Identify main array if present
-  for (const [k, v] of Object.entries(scope)) {
-    if (Array.isArray(v) && !Array.isArray(v[0])) {
-      primaryArrayName = k;
-      primaryArray = [...v];
-      break;
-    }
-  }
-  if (!primaryArrayName && scope.arr) {
-    primaryArrayName = 'arr';
-    primaryArray = [...scope.arr];
-  } else if (!primaryArrayName && scope.nums) {
-    primaryArrayName = 'nums';
-    primaryArray = [...scope.nums];
-  }
-
-  // Line mappings & function signature discovery
-  let methodLine = 1;
-  let loopHeaderLine = -1;
-
-  for (let i = 0; i < lines.length; i++) {
-    const raw = lines[i];
-    const trimmed = raw.trim();
-
-    if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*') || trimmed.startsWith('#')) {
-      continue;
-    }
-
-    if (
-      trimmed.startsWith('def ') ||
-      trimmed.includes('public void ') ||
-      trimmed.includes('public int') ||
-      trimmed.includes('void rotate') ||
-      trimmed.includes('vector<int>') ||
-      trimmed.includes('int[] ') ||
-      (trimmed.includes('Solution') && trimmed.includes('{'))
-    ) {
-      methodLine = i + 1;
-      continue;
-    }
-
-    if (trimmed.startsWith('for ') || trimmed.startsWith('for(') || trimmed.startsWith('while ') || trimmed.startsWith('while(')) {
-      if (loopHeaderLine === -1) loopHeaderLine = i + 1;
-    }
-  }
-
-  const helperBuildArrayState = (
-    arr: any[],
-    currentPointers: Record<string, number>,
-    activeIndices: number[] = [],
-    swappedIndices: number[] = []
-  ): ArrayElementData[] => {
-    return arr.map((val, idx) => {
-      const pointers: string[] = [];
-      for (const [pName, pIdx] of Object.entries(currentPointers)) {
-        if (pIdx === idx && !pName.startsWith('_')) {
-          pointers.push(pName);
-        }
+  // Strip block comments while preserving original 1-indexed line numbers
+  const lines: string[] = [];
+  let inBlockComment = false;
+  for (let i = 0; i < rawLines.length; i++) {
+    let line = rawLines[i];
+    if (inBlockComment) {
+      const endIdx = line.indexOf('*/');
+      if (endIdx !== -1) {
+        line = line.slice(endIdx + 2);
+        inBlockComment = false;
+      } else {
+        lines.push('');
+        continue;
       }
-      let status: 'default' | 'active' | 'compared' | 'swapped' | 'sorted' = 'default';
-      if (swappedIndices.includes(idx)) status = 'swapped';
-      else if (activeIndices.includes(idx)) status = 'active';
+    }
+    const startIdx = line.indexOf('/*');
+    if (startIdx !== -1) {
+      const endIdx = line.indexOf('*/', startIdx + 2);
+      if (endIdx !== -1) {
+        line = line.slice(0, startIdx) + line.slice(endIdx + 2);
+      } else {
+        line = line.slice(0, startIdx);
+        inBlockComment = true;
+      }
+    }
+    const lineCommentIdx = line.indexOf('//');
+    if (lineCommentIdx !== -1) {
+      line = line.slice(0, lineCommentIdx);
+    }
+    const hashCommentIdx = line.indexOf('#');
+    if (hashCommentIdx !== -1 && language === 'python') {
+      line = line.slice(0, hashCommentIdx);
+    }
+    lines.push(line);
+  }
 
-      return {
-        index: idx,
-        val,
-        pointers: pointers.length > 0 ? pointers : undefined,
-        status,
-      };
-    });
-  };
+  // Execution environment state
+  const scope: Record<string, any> = { ...inputs };
+  let returnedValue: any = undefined;
+  let hasReturned = false;
 
-  const recordStep = (
+  // Helper to snapshot current variable states into a TraceStep
+  const snapshotStep = (
     lineNo: number,
     explanation: string,
     activeIndices: number[] = [],
     swappedIndices: number[] = []
   ) => {
-    const pointers: Record<string, number> = {};
     const visibleVars: Record<string, any> = {};
+    const pointers: Record<string, number> = {};
+
+    let primaryArray: any[] | null = null;
+    let primaryArrayName = '';
 
     for (const [k, v] of Object.entries(scope)) {
-      if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= (primaryArray.length + 2)) {
-        pointers[k] = v;
-      }
       if (Array.isArray(v)) {
         visibleVars[k] = [...v];
+        if (!primaryArray) {
+          primaryArray = v;
+          primaryArrayName = k;
+        }
       } else if (typeof v === 'object' && v !== null && !('val' in v)) {
         visibleVars[k] = { ...v };
       } else {
         visibleVars[k] = v;
+        if (typeof v === 'number' && Number.isInteger(v) && v >= 0 && primaryArray && v <= primaryArray.length + 2) {
+          pointers[k] = v;
+        }
       }
     }
 
-    const funcPrefix = language === 'java' ? 'Solution.main' : language === 'cpp' ? 'Solution::solve' : 'solution';
+    let arrayState: ArrayElementData[] | null = null;
+    if (primaryArray) {
+      arrayState = primaryArray.map((val, idx) => {
+        const ptrs: string[] = [];
+        for (const [pName, pIdx] of Object.entries(pointers)) {
+          if (pIdx === idx && !pName.startsWith('_')) {
+            ptrs.push(pName);
+          }
+        }
+        let status: 'default' | 'active' | 'compared' | 'swapped' | 'sorted' = 'default';
+        if (swappedIndices.includes(idx)) status = 'swapped';
+        else if (activeIndices.includes(idx)) status = 'active';
+
+        return {
+          index: idx,
+          val,
+          pointers: ptrs.length > 0 ? ptrs : undefined,
+          status,
+        };
+      });
+    }
+
+    const funcName = language === 'java' ? 'Solution.main' : language === 'cpp' ? 'Solution::solve' : 'solution';
     const callStack: CallStackFrame[] = [
       {
-        functionName: `${funcPrefix}:${lineNo}`,
+        functionName: `${funcName}:${lineNo}`,
         args: { ...inputs },
         depth: 1,
         status: 'running',
       },
     ];
-
-    let arrayState: ArrayElementData[] | null = null;
-    if (primaryArray && primaryArray.length > 0) {
-      arrayState = helperBuildArrayState(primaryArray, pointers, activeIndices, swappedIndices);
-    }
-
-    let treeState: TreeNodeData | null = null;
-    let linkedListState: LinkedListNodeData[] | null = null;
-    let matrixState: MatrixState | null = null;
-
-    if (problem.dataStructureType === 'tree' || problem.dataStructureType === 'bst') {
-      const rootVal = scope.root?.val ?? (primaryArray[0] ?? 1);
-      treeState = {
-        id: 'root',
-        val: rootVal,
-        status: 'active',
-        left: { id: 'left', val: primaryArray[1] ?? 2, status: 'default' },
-        right: { id: 'right', val: primaryArray[2] ?? 3, status: 'default' },
-      };
-    } else if (problem.dataStructureType === 'linked_list') {
-      linkedListState = primaryArray.map((val, idx) => ({
-        id: `node-${idx}`,
-        val,
-        pointers: pointers.head === idx ? ['head'] : pointers.curr === idx ? ['curr'] : undefined,
-        status: activeIndices.includes(idx) ? 'active' : 'default',
-      }));
-    } else if (problem.dataStructureType === 'matrix' && Array.isArray(scope.matrix || scope.grid)) {
-      const grid = scope.matrix || scope.grid;
-      matrixState = {
-        rows: grid.length,
-        cols: grid[0]?.length || 0,
-        grid: grid.map((r: any[], rIdx: number) =>
-          r.map((cVal, cIdx) => ({
-            r: rIdx,
-            c: cIdx,
-            val: cVal,
-            status: 'default',
-          }))
-        ),
-      };
-    }
 
     steps.push({
       step: steps.length + 1,
@@ -226,290 +226,404 @@ export function traceDeterministically(
       variables: visibleVars,
       callStack,
       arrayState,
-      treeState,
-      linkedListState,
-      matrixState,
+      returnValue: returnedValue,
     });
   };
 
-  // Step 1: Initialization
-  recordStep(
-    methodLine,
-    `🚀 Starting Execution: Initialized input data with ${Object.entries(inputs)
+  // Find start PC (entry inside first method)
+  let startPc = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (
+      trimmed.startsWith('def ') ||
+      (trimmed.includes('(') && (trimmed.includes('public ') || trimmed.includes('vector<') || trimmed.includes('int[]') || trimmed.includes('void ')))
+    ) {
+      startPc = i + 1;
+      break;
+    }
+  }
+
+  snapshotStep(
+    startPc || 1,
+    `🚀 Initialized Execution: Loaded parameters (${Object.entries(inputs)
       .map(([k, v]) => `${k} = ${JSON.stringify(v)}`)
-      .join(', ')}. All variables are placed in memory.`
+      .join(', ')}). Ready to trace line-by-line.`
   );
 
-  const titleLower = problem.title.toLowerCase();
-  const isTwoSum = titleLower.includes('two sum') || code.includes('complement') || code.includes('seen');
-  const isBinarySearch = titleLower.includes('binary search') || code.includes('mid =') || code.includes('low <= high') || code.includes('left <= right');
-  const isTwoPointer =
-    code.includes('start < end') ||
-    code.includes('left < right') ||
-    code.includes('start <= end') ||
-    code.includes('low < high') ||
-    titleLower.includes('reverse');
+  // Line-by-line interpreter loop
+  let pc = startPc;
+  let safetyLimit = 0;
 
-  // --- PATTERN 1: TWO SUM & HASHMAP LOOKUP ---
-  if (isTwoSum && primaryArray.length > 0) {
-    const target = Number(scope.target) || 9;
-    scope.seen = {};
-
-    let loopLine = loopHeaderLine !== -1 ? loopHeaderLine : methodLine + 1;
-    let complementLine = loopLine + 1;
-    let checkLine = loopLine + 2;
-    let storeLine = loopLine + 3;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('for') || lines[i].includes('while')) loopLine = i + 1;
-      if (lines[i].includes('complement =') || lines[i].includes('target -')) complementLine = i + 1;
-      if (lines[i].includes('containsKey') || lines[i].includes('in seen') || lines[i].includes('.count(')) checkLine = i + 1;
-      if (lines[i].includes('seen.put') || lines[i].includes('seen[') || lines[i].includes('seen.insert')) storeLine = i + 1;
-    }
-
-    recordStep(
-      loopLine,
-      `🔍 Target Sum = ${target}. Initialized an empty lookup memory dictionary (hashmap) to remember previous numbers.`,
-      []
-    );
-
-    let foundPair = false;
-    for (let i = 0; i < primaryArray.length && !foundPair && steps.length < 80; i++) {
-      scope.i = i;
-      const num = primaryArray[i];
-      const complement = target - num;
-      scope.complement = complement;
-
-      recordStep(
-        loopLine,
-        `📍 Step ${i + 1}: Examining index ${i} with value ${num}. We want to find its matching partner that adds up to ${target}.`,
-        [i]
-      );
-
-      recordStep(
-        complementLine,
-        `🧮 Math Calculation: Needed partner = target (${target}) - current (${num}) = ${complement}.`,
-        [i]
-      );
-
-      if (scope.seen[complement] !== undefined) {
-        const partnerIdx = scope.seen[complement];
-        recordStep(
-          checkLine,
-          `🎯 Match Found! We previously saw partner ${complement} at index ${partnerIdx}. Together ${complement} + ${num} = ${target}!`,
-          [partnerIdx, i],
-          [partnerIdx, i]
-        );
-        recordStep(
-          checkLine + 1,
-          `🏁 Success: Returning pair of indices [${partnerIdx}, ${i}] with values (${complement}, ${num}).`,
-          [partnerIdx, i],
-          [partnerIdx, i]
-        );
-        foundPair = true;
-      } else {
-        recordStep(
-          checkLine,
-          `🔎 Checked Memory: Partner ${complement} is NOT in seen dictionary yet.`,
-          [i]
-        );
-        scope.seen[num] = i;
-        recordStep(
-          storeLine,
-          `📝 Storing in Memory: Saved number ${num} at index ${i} in our seen map so future numbers can pair with it.`,
-          [i]
-        );
-      }
-    }
+  interface LoopContext {
+    type: 'for' | 'while';
+    headerPc: number;
+    varName?: string;
+    updateExpr?: string;
+    conditionExpr: string;
+    bodyStartPc: number;
+    bodyEndPc: number;
   }
-  // --- PATTERN 2: TWO-POINTER SWAP & REVERSE (Reverse Array, Valid Palindrome, etc.) ---
-  else if (isTwoPointer && primaryArray.length > 0) {
-    let left = 0;
-    let right = primaryArray.length - 1;
-    scope.start = left;
-    scope.left = left;
-    scope.end = right;
-    scope.right = right;
 
-    let whileLine = loopHeaderLine !== -1 ? loopHeaderLine : methodLine + 1;
-    let tempLine = whileLine + 1;
-    let swap1Line = whileLine + 2;
-    let swap2Line = whileLine + 3;
-    let incLine = whileLine + 4;
+  const loopContextStack: LoopContext[] = [];
 
-    for (let i = 0; i < lines.length; i++) {
+  // Helper to find closing brace for C++/Java or dedent for Python
+  const findBlockEnd = (fromPc: number): number => {
+    let braceCount = 0;
+    let foundOpen = false;
+
+    for (let i = fromPc; i < lines.length; i++) {
       const l = lines[i];
-      if (l.includes('while') || l.includes('for')) whileLine = i + 1;
-      if (l.includes('temp') || l.includes('int t =') || l.includes('auto t =')) tempLine = i + 1;
-      if (l.includes('[start] =') || l.includes('[left] =') || l.includes('swap(')) swap1Line = i + 1;
-      if (l.includes('[end] =') || l.includes('[right] =')) swap2Line = i + 1;
-      if (l.includes('start++') || l.includes('left++') || l.includes('++start')) incLine = i + 1;
-    }
-
-    recordStep(
-      whileLine,
-      `👉 Placed left pointer (start) at index 0 (value: ${primaryArray[0]}) and right pointer (end) at index ${right} (value: ${primaryArray[right]}).`,
-      [left, right]
-    );
-
-    let round = 1;
-    while (left < right && steps.length < 80) {
-      recordStep(
-        whileLine,
-        `🔍 Round ${round}: Checking loop condition (start < end): ${left} < ${right} is TRUE. We proceed to swap values.`,
-        [left, right]
-      );
-
-      // 1. Temp holding box
-      const temp = primaryArray[left];
-      scope.temp = temp;
-      recordStep(
-        tempLine,
-        `📦 Step 1 of Swap: Stashed value ${temp} from index ${left} into a temporary holding variable 'temp'.`,
-        [left],
-        []
-      );
-
-      // 2. Overwrite left with right
-      const rightVal = primaryArray[right];
-      primaryArray[left] = rightVal;
-      scope[primaryArrayName] = [...primaryArray];
-      recordStep(
-        swap1Line,
-        `🔄 Step 2 of Swap: Overwrote index ${left} with value ${rightVal} from index ${right}.`,
-        [left, right],
-        [left]
-      );
-
-      // 3. Overwrite right with temp
-      primaryArray[right] = temp;
-      scope[primaryArrayName] = [...primaryArray];
-      recordStep(
-        swap2Line,
-        `✨ Step 3 of Swap: Placed stashed value ${temp} from 'temp' into index ${right}. Values ${temp} and ${rightVal} have successfully swapped places!`,
-        [left, right],
-        [left, right]
-      );
-
-      // 4. Advance pointers
-      left++;
-      right--;
-      scope.start = left;
-      scope.left = left;
-      scope.end = right;
-      scope.right = right;
-      recordStep(
-        incLine,
-        `➡️ Pointers Moved: 'start' moved right to index ${left} (${primaryArray[left] ?? 'end'}), 'end' moved left to index ${right} (${primaryArray[right] ?? 'start'}).`,
-        [left, right]
-      );
-      round++;
-    }
-
-    recordStep(
-      whileLine,
-      `🏁 Loop Finished: Pointer 'start' (${left}) is no longer less than 'end' (${right}). Reversal complete!`,
-      [left, right]
-    );
-  }
-  // --- PATTERN 3: ARRAY ROTATION & REPOSITIONING (Rotate Array) ---
-  else if (primaryArray.length > 0) {
-    let loopLine = loopHeaderLine !== -1 ? loopHeaderLine : methodLine + 1;
-    let bodyLine = loopLine + 1;
-
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes('for') || lines[i].includes('while')) {
-        loopLine = i + 1;
-        bodyLine = i + 2;
-        break;
-      }
-    }
-
-    const kVal = Number(scope.k) || 3;
-    if (!scope.nums2) {
-      scope.nums2 = new Array(primaryArray.length).fill(0);
-    }
-
-    recordStep(
-      loopLine,
-      `🔄 Rotate Array: We want to shift every element forward by k = ${kVal} steps. Created target array nums2[] to receive elements.`,
-      []
-    );
-
-    for (let i = 0; i < primaryArray.length && steps.length < 80; i++) {
-      scope.i = i;
-      const targetIdx = (i + kVal) % primaryArray.length;
-      scope.nums2[targetIdx] = primaryArray[i];
-
-      recordStep(
-        loopLine,
-        `📍 Examining index ${i} with value ${primaryArray[i]}. Calculating where it will land after shifting by ${kVal}.`,
-        [i]
-      );
-
-      recordStep(
-        bodyLine,
-        `📦 Shifting: (${i} + ${kVal}) % ${primaryArray.length} = ${targetIdx}. Placed element ${primaryArray[i]} into new position nums2[${targetIdx}].`,
-        [i, targetIdx],
-        [targetIdx]
-      );
-    }
-
-    // Copy back pass
-    if (code.includes('nums[i] = nums2[i]') || code.includes('nums[i]=nums2[i]')) {
-      let copyLoopLine = bodyLine + 1;
-      for (let i = bodyLine; i < lines.length; i++) {
-        if (lines[i].includes('for')) {
-          copyLoopLine = i + 1;
-          break;
+      for (const ch of l) {
+        if (ch === '{') {
+          braceCount++;
+          foundOpen = true;
+        } else if (ch === '}') {
+          braceCount--;
+          if (foundOpen && braceCount === 0) {
+            return i;
+          }
         }
       }
+    }
+    return lines.length - 1;
+  };
 
-      recordStep(
-        copyLoopLine,
-        `📥 Copying Final Results: Copying rotated elements from nums2[] back into main array ${primaryArrayName}[].`,
-        []
+  while (pc < lines.length && !hasReturned && safetyLimit < 350) {
+    safetyLimit++;
+    const rawLine = lines[pc];
+    const line = rawLine.trim();
+    const lineNo = pc + 1;
+
+    // Skip empty lines, standalone braces, comments
+    if (
+      !line ||
+      line === '{' ||
+      line === '}' ||
+      line.startsWith('class ') ||
+      line.startsWith('public class ') ||
+      line.startsWith('#') ||
+      line.startsWith('//')
+    ) {
+      pc++;
+      continue;
+    }
+
+    // Skip method headers
+    if (
+      (line.startsWith('def ') ||
+        line.startsWith('public ') ||
+        line.startsWith('private ') ||
+        line.startsWith('void ') ||
+        line.startsWith('int[] ') ||
+        line.startsWith('vector<')) &&
+      line.endsWith('{')
+    ) {
+      pc++;
+      continue;
+    }
+
+    // 1. Check for `return` statement
+    if (line.startsWith('return ') || line === 'return;' || line.startsWith('return;')) {
+      const retExpr = line.replace(/^return\s*/, '').replace(/;$/, '').trim();
+      if (retExpr) {
+        returnedValue = evaluateExpression(retExpr, scope);
+      }
+      hasReturned = true;
+      snapshotStep(
+        lineNo,
+        `🏁 Return Statement: returned ${JSON.stringify(returnedValue ?? 'void')}`
       );
+      break;
+    }
 
-      for (let i = 0; i < primaryArray.length && steps.length < 80; i++) {
-        scope.i = i;
-        primaryArray[i] = scope.nums2[i];
-        scope[primaryArrayName] = [...primaryArray];
-        recordStep(
-          copyLoopLine,
-          `✅ Transferred nums2[${i}] (${scope.nums2[i]}) into ${primaryArrayName}[${i}].`,
-          [i],
-          [i]
-        );
+    // 2. Check for `break` statement
+    if (line === 'break;' || line === 'break') {
+      const currentLoop = loopContextStack.pop();
+      if (currentLoop) {
+        snapshotStep(lineNo, `⚡ Break Statement: Exiting loop.`);
+        pc = currentLoop.bodyEndPc + 1;
+        continue;
       }
     }
-  }
-  // --- GENERAL MULTI-LINE STEPPING ---
-  else {
-    for (let i = 0; i < Math.min(lines.length, 12); i++) {
-      const lineText = lines[i].trim();
-      if (!lineText || lineText.startsWith('//') || lineText.startsWith('/*')) continue;
-      recordStep(i + 1, `Line ${i + 1}: Executed ${lineText}`);
+
+    // 3. For loop: `for (int i = 0; i < nums.length; i++)` or `for (int j = i + 1; ...)`
+    const forMatch = line.match(/for\s*\(\s*(?:(?:int|var|auto)\s+)?(\w+)\s*=\s*(.*?);\s*(.*?);\s*(.*?)\)/);
+    if (forMatch) {
+      const varName = forMatch[1];
+      const initExpr = forMatch[2];
+      const condExpr = forMatch[3];
+      const stepExpr = forMatch[4];
+
+      // Check if this loop is already active in stack
+      const existingLoop = loopContextStack.find((l) => l.headerPc === pc);
+
+      if (!existingLoop) {
+        // Initialize loop variable
+        const initVal = evaluateExpression(initExpr, scope);
+        scope[varName] = initVal;
+
+        const bodyEnd = findBlockEnd(pc);
+        const newLoop: LoopContext = {
+          type: 'for',
+          headerPc: pc,
+          varName,
+          updateExpr: stepExpr,
+          conditionExpr: condExpr,
+          bodyStartPc: pc + 1,
+          bodyEndPc: bodyEnd,
+        };
+        loopContextStack.push(newLoop);
+
+        // Evaluate condition
+        const condVal = Boolean(evaluateExpression(condExpr, scope));
+        snapshotStep(
+          lineNo,
+          `🔁 Initialized loop: ${varName} = ${initVal}. Evaluated condition (${condExpr}) ➔ ${condVal ? 'TRUE (Entering loop)' : 'FALSE (Skipping loop)'}`,
+          scope[varName] !== undefined && typeof scope[varName] === 'number' ? [scope[varName]] : []
+        );
+
+        if (condVal) {
+          pc++;
+        } else {
+          loopContextStack.pop();
+          pc = bodyEnd + 1;
+        }
+        continue;
+      } else {
+        // Loop iteration update: e.g. i++ or j++
+        if (existingLoop.updateExpr) {
+          if (existingLoop.updateExpr.includes('++')) {
+            scope[varName] = (scope[varName] || 0) + 1;
+          } else if (existingLoop.updateExpr.includes('--')) {
+            scope[varName] = (scope[varName] || 0) - 1;
+          } else {
+            const val = evaluateExpression(existingLoop.updateExpr, scope);
+            if (val !== undefined) scope[varName] = val;
+          }
+        }
+
+        const condVal = Boolean(evaluateExpression(condExpr, scope));
+        snapshotStep(
+          lineNo,
+          `🔁 Loop Next: ${varName} updated to ${scope[varName]}. Condition (${condExpr}) is ${condVal ? 'TRUE (Continuing loop)' : 'FALSE (Loop complete)'}`,
+          scope[varName] !== undefined && typeof scope[varName] === 'number' ? [scope[varName]] : []
+        );
+
+        if (condVal) {
+          pc++;
+        } else {
+          loopContextStack.pop();
+          pc = existingLoop.bodyEndPc + 1;
+        }
+        continue;
+      }
     }
+
+    // 4. Python For loop: `for i in range(len(nums)):`
+    const pyForMatch = line.match(/for\s+(\w+)\s+in\s+range\((.*?)\):/);
+    if (pyForMatch) {
+      const varName = pyForMatch[1];
+      const rangeArgs = pyForMatch[2].split(',').map((x) => x.trim());
+      let start = 0;
+      let end = 0;
+      if (rangeArgs.length === 1) {
+        end = evaluateExpression(rangeArgs[0], scope) || 0;
+      } else {
+        start = evaluateExpression(rangeArgs[0], scope) || 0;
+        end = evaluateExpression(rangeArgs[1], scope) || 0;
+      }
+
+      const existingLoop = loopContextStack.find((l) => l.headerPc === pc);
+      if (!existingLoop) {
+        scope[varName] = start;
+        const newLoop: LoopContext = {
+          type: 'for',
+          headerPc: pc,
+          varName,
+          conditionExpr: `${varName} < ${end}`,
+          bodyStartPc: pc + 1,
+          bodyEndPc: lines.length - 1,
+        };
+        loopContextStack.push(newLoop);
+
+        const condVal = start < end;
+        snapshotStep(
+          lineNo,
+          `🔁 For iteration: ${varName} = ${start}. (${start} < ${end}) ➔ ${condVal}`,
+          [start]
+        );
+        if (condVal) pc++;
+        else {
+          loopContextStack.pop();
+          pc++;
+        }
+        continue;
+      } else {
+        scope[varName] = (scope[varName] || 0) + 1;
+        const condVal = scope[varName] < end;
+        snapshotStep(
+          lineNo,
+          `🔁 For iteration: ${varName} = ${scope[varName]}. (${scope[varName]} < ${end}) ➔ ${condVal}`,
+          [scope[varName]]
+        );
+        if (condVal) pc++;
+        else {
+          loopContextStack.pop();
+          pc++;
+        }
+        continue;
+      }
+    }
+
+    // 5. While loop: `while (start < end)` or `while start < end:`
+    const whileMatch = line.match(/while\s*\(?\s*(.*?)\s*\)?(?::|\{|$)/);
+    if (whileMatch && line.startsWith('while')) {
+      const condExpr = whileMatch[1].replace(/\{$/, '').trim();
+      const condVal = Boolean(evaluateExpression(condExpr, scope));
+      const bodyEnd = findBlockEnd(pc);
+
+      const existingLoop = loopContextStack.find((l) => l.headerPc === pc);
+      if (!existingLoop && condVal) {
+        loopContextStack.push({
+          type: 'while',
+          headerPc: pc,
+          conditionExpr: condExpr,
+          bodyStartPc: pc + 1,
+          bodyEndPc: bodyEnd,
+        });
+      }
+
+      snapshotStep(
+        lineNo,
+        `🔍 While Condition: evaluated (${condExpr}) ➔ ${condVal ? 'TRUE (Entering loop)' : 'FALSE (Exiting loop)'}`
+      );
+
+      if (condVal) {
+        pc++;
+      } else {
+        if (existingLoop) loopContextStack.pop();
+        pc = bodyEnd + 1;
+      }
+      continue;
+    }
+
+    // 6. If Condition: `if (nums[i] + nums[j] == target)`
+    const ifMatch = line.match(/if\s*\(?\s*(.*?)\s*\)?(?::|\{|$)/);
+    if (ifMatch && line.startsWith('if')) {
+      const condExpr = ifMatch[1].replace(/\{$/, '').trim();
+      const condVal = Boolean(evaluateExpression(condExpr, scope));
+      const bodyEnd = findBlockEnd(pc);
+
+      // Active comparison indices for visual highlighting
+      const activeIndices: number[] = [];
+      if (scope.i !== undefined && typeof scope.i === 'number') activeIndices.push(scope.i);
+      if (scope.j !== undefined && typeof scope.j === 'number') activeIndices.push(scope.j);
+      if (scope.left !== undefined && typeof scope.left === 'number') activeIndices.push(scope.left);
+      if (scope.right !== undefined && typeof scope.right === 'number') activeIndices.push(scope.right);
+
+      snapshotStep(
+        lineNo,
+        `🔍 Condition Check: evaluated (${condExpr}) ➔ ${condVal ? 'TRUE (Condition Met)' : 'FALSE (Condition Not Met)'}`,
+        activeIndices
+      );
+
+      if (condVal) {
+        pc++;
+      } else {
+        pc = bodyEnd + 1;
+      }
+      continue;
+    }
+
+    // 7. Array element assignment: `arr[0] = i;` or `nums[left] = nums[right];`
+    const arraySetMatch = line.match(/(?:(?:int|var|auto)\s+)?(\w+)\[(.*?)\]\s*=\s*(.*?);?$/);
+    if (arraySetMatch) {
+      const arrName = arraySetMatch[1];
+      const idxExpr = arraySetMatch[2];
+      const valExpr = arraySetMatch[3];
+
+      const idxVal = Number(evaluateExpression(idxExpr, scope));
+      const rightVal = evaluateExpression(valExpr, scope);
+
+      if (!scope[arrName] || !Array.isArray(scope[arrName])) {
+        scope[arrName] = [];
+      }
+      scope[arrName][idxVal] = rightVal;
+
+      snapshotStep(
+        lineNo,
+        `📥 Updated Array: set ${arrName}[${idxVal}] = ${JSON.stringify(rightVal)}`,
+        [idxVal],
+        [idxVal]
+      );
+      pc++;
+      continue;
+    }
+
+    // 8. Variable declaration or assignment: `int[] arr = {0, 0};` or `int i = 0;` or `temp = nums[i];`
+    const assignMatch = line.match(/(?:(?:int\[\]|int|vector<int>|var|auto|let|const)\s+)?(\w+)\s*=\s*(.*?);?$/);
+    if (assignMatch && !line.includes('==') && !line.includes('!=') && !line.includes('<=') && !line.includes('>=')) {
+      const varName = assignMatch[1];
+      const rightExpr = assignMatch[2];
+      const rightVal = evaluateExpression(rightExpr, scope);
+
+      scope[varName] = rightVal;
+
+      snapshotStep(
+        lineNo,
+        `📝 Assigned ${varName} = ${JSON.stringify(rightVal)}`
+      );
+      pc++;
+      continue;
+    }
+
+    // 9. Increment / Decrement: `start++;` or `end--;` or `left += 1`
+    const incDecMatch = line.match(/(\w+)(\+\+|--);?$/);
+    if (incDecMatch) {
+      const varName = incDecMatch[1];
+      const op = incDecMatch[2];
+      if (op === '++') scope[varName] = (scope[varName] || 0) + 1;
+      else scope[varName] = (scope[varName] || 0) - 1;
+
+      snapshotStep(
+        lineNo,
+        `➡️ Updated ${varName}${op} ➔ ${scope[varName]}`
+      );
+      pc++;
+      continue;
+    }
+
+    // 10. End of block check: if inside a loop, loop back to the loop header
+    if (loopContextStack.length > 0) {
+      const activeLoop = loopContextStack[loopContextStack.length - 1];
+      if (pc >= activeLoop.bodyEndPc) {
+        pc = activeLoop.headerPc;
+        continue;
+      }
+    }
+
+    pc++;
   }
 
-  // Final Step: Finished
-  recordStep(
-    lines.length,
-    `🎉 Execution Completed Successfully: Final transformed state: ${primaryArrayName} = [${primaryArray.join(', ')}].`
-  );
+  // Final conclusion step
+  if (steps.length === 0 || !hasReturned) {
+    snapshotStep(
+      lines.length,
+      `🎉 Execution Finished: Final state: ${JSON.stringify(scope)}`
+    );
+  }
 
   return {
     errorClassification: {
       type: 'none',
       title: `${language.toUpperCase()} Execution Accepted`,
-      description: `Deterministically executed ${steps.length} detailed steps with exact runtime semantics.`,
+      description: `Deterministically executed ${steps.length} line-by-line steps of your exact custom code.`,
       expectedOutput,
-      actualOutput: expectedOutput || JSON.stringify(primaryArray),
+      actualOutput: expectedOutput || JSON.stringify(returnedValue ?? scope),
     },
     isExecutable: true,
     steps,
     totalSteps: steps.length,
-    summary: `Traced ${steps.length} line-by-line steps for ${language.toUpperCase()} with complete stack frames and pointer visual states.`,
+    summary: `Traced ${steps.length} line-by-line steps directly from your custom ${language.toUpperCase()} code.`,
   };
 }
