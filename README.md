@@ -1,59 +1,96 @@
 # 🚀 VisualCode
 
-**VisualCode** is an AI-powered code execution visualizer and error diagnosis platform designed for LeetCode and competitive programming problems. It helps developers understand *exactly what their code does* step-by-step with real-time pointer tracking, call stack frames, and robust 3-tier error classification.
+**VisualCode** is a next-generation, high-fidelity code execution visualizer and educational platform designed for LeetCode, DSA, and competitive programming. It transforms complex code into interactive, step-by-step visual animations with live pointer tracking, stack frames, heap inspection, and plain-English explanations that anyone—from beginners to experienced engineers—can understand.
 
 ---
 
-## ✨ Features
+## 🌟 Key Highlights
 
-- **🌐 Direct Problem Fetching**: Search any LeetCode problem by name (e.g. *"Validate Binary Search Tree"*, *"Invert Binary Tree"*, *"Number of Islands"*) or number to instantly fetch problem statements, test cases, constraints, and starter templates.
-- **⚡ Multi-Language Support**: Write and visualize code in **Python**, **Java**, and **C++** with full Monaco Editor syntax highlighting.
-- **🚦 3-Tier Error Classification**:
-  - 🔴 **Syntax Error**: Immediate compiler and parser detection with exact line indicators and fix recommendations.
-  - 🟠 **Semantic / Runtime Error**: Runtime crash detection (e.g. `NullPointerException`, null/None dereferencing, out-of-bounds) with call stack inspection.
-  - 🟡 **Logical Error**: When code runs cleanly but produces incorrect output/data structures, it provides diff analysis (Expected vs Actual) and visualizes *what your code actually did wrong*.
-  - 🟢 **Success**: Clean execution with celebratory confetti.
-- **🌲 Battle-Tested Visualizers**:
-  - **D3-Hierarchy Tree Visualizer**: Interactive, zoomable, draggable Binary Search Trees / Binary Trees with active node glowing and pointer tracking (`root`, `curr`, `p`, `q`).
-  - **Cytoscape Graph Visualizer**: Directed & undirected graphs with edge traversal indicators.
-  - **Sequence & Pointer Visualizer**: 1D arrays with two-pointer tracking (`left`, `right`, `mid`), linked lists with pointer arrows, and 2D grid matrices.
-- **🎛️ Interactive Step-by-Step Timeline**: Step backward/forward, scrub timeline, and auto-play with 0.5x, 1x, 2x speeds accompanied by plain-English line explanations.
-- **📦 State Inspector**: Real-time variables watcher and recursion depth call stack frames.
+- **🧠 Real Native Runtime Tracing**:
+  - **Python**: Line-by-line interpreter hooks via `sys.settrace()` (reusing Python Tutor's battle-tested `pg_logger` engine).
+  - **Java**: Java Debug Interface (`JDI` / `jdb`) for stepping, stack frame inspection, and heap array tracking.
+  - **C++**: GDB Machine Interface (`gdb --interpreter=mi2`) for `-exec-step`, `-stack-list-variables`, and `-data-evaluate-expression`.
+- **⚡ Universal Custom Code Interpreter**: Executes your exact custom code line-by-line (e.g. brute-force nested loops, custom swaps, two pointers, binary search) with zero hardcoded assumptions.
+- **🌐 Direct LeetCode GraphQL Scraper & Fast Autocomplete**:
+  - Scrapes official problem data, starter code (Python, Java, C++), descriptions, constraints, and test cases directly from LeetCode.
+  - 0ms instant autocomplete suggestions for top curated problems with debounced live search fallback.
+- **🧪 Interactive Testcase & Custom Input Console**:
+  - One-click switching between official LeetCode example test cases (`Case 1`, `Case 2`, `Case 3`).
+  - Edit or enter custom input arrays, target values, and tree structures in real-time.
+- **🎛️ Python Tutor-Style Stepping Timeline**:
+  - `<< First`, `< Prev`, `Next >`, and `Last >>` controls with full keyboard navigation (<kbd>→</kbd>, <kbd>←</kbd>, <kbd>Home</kbd>, <kbd>End</kbd>).
+- **💡 Plain-English Narrative Cards (Non-Coder Friendly)**:
+  - Multi-phase real-world conceptual stories for every step (e.g. 🔄 *Swapping Values*, 🔍 *Checking Condition*, 📦 *Saving into Temp Holding Box*, ➡️ *Moving Pointers*).
+- **🤖 AI Dedicated Exclusively to Error Diagnosis**:
+  - AI (DeepSeek / OpenRouter) is called strictly when runtime exceptions or output mismatches occur to classify errors (Syntax, Semantic, Logic) and generate code fix diffs.
 
 ---
 
-## 🛠️ Tech Stack
+## 🎨 Visualization Engines
 
-- **Frontend**: React 19, TypeScript, Vite
-- **Code Editor**: `@monaco-editor/react`
-- **Visualization Engines**: `d3`, `d3-hierarchy`, `cytoscape`
-- **AI Execution Engine**: OpenRouter API (`google/gemini-2.5-flash`)
-- **Styling & UI**: Tailwind CSS, `lucide-react`, `canvas-confetti`
+| Data Structure | Visualization Engine | Features |
+|---|---|---|
+| **Arrays & Matrices** | Framer Motion & Spring Physics | Multi-array transformations, glowing pointer chips (`i`, `j`, `left`, `right`, `start`, `end`, `mid`), swap animations, and mutation diffs. |
+| **Hash Maps & Sets** | Dynamic Memory Table | Live key-value insertion table tracking seen entries and complement lookups. |
+| **Binary Trees & BSTs** | D3 Hierarchy | Interactive, zoomable, draggable binary trees with recursive stack highlight and active node indicators. |
+| **Linked Lists** | React Flow (`@xyflow/react`) | Animated directed link transitions, pointer badges (`head`, `curr`, `prev`, `next`), and node value boxes. |
+| **Graphs** | Cytoscape.js | Directed and undirected graph traversals with BFS/DFS exploration states. |
+
+---
+
+## 🛠️ Architecture
+
+```
+   ┌────────────────────────────────────────────────────────┐
+   │         VisualCode React / Framer Motion Web App       │
+   └───────────────────────────▲────────────────────────────┘
+                               │ POST /api/trace (Unified Trace JSON)
+   ┌───────────────────────────┴────────────────────────────┐
+   │            VisualCode Native Trace Server (Port 3001)  │
+   ├───────────────────┬───────────────────┬────────────────┤
+   │      PYTHON       │       JAVA        │      C++       │
+   │  sys.settrace()   │  Java JDI / JDB   │   GDB/MI v2    │
+   │ (pg_logger model) │ (Debug Stepper)   │ (Machine Inter)│
+   └───────────────────┴───────────────────┴────────────────┘
+```
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js (v18+)
-- npm or yarn
+- **Node.js** (v18+)
+- **Python 3** (for Python native tracing)
+- **JDK 17+** (for Java JDI native tracing)
+- **g++ / GDB** (for C++ GDB/MI native tracing)
 
-### Installation
+### 1. Clone & Install Dependencies
 ```bash
-# Clone the repository
 git clone https://github.com/devokdev/VisualCode.git
 cd VisualCode
-
-# Install dependencies
 npm install
-
-# Start development server
-npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+### 2. Start the Development Servers
+
+#### Start the Native Trace Backend:
+```bash
+npm run server
+```
+*Runs on `http://localhost:3001`.*
+
+#### Start the Vite Frontend:
+```bash
+npm run dev
+```
+*Open [http://localhost:5173](http://localhost:5173) in your browser.*
 
 ---
 
-## 🔑 OpenRouter API Configuration
-You can configure your OpenRouter API key directly in the UI via the **API Key** settings button in the top search bar.
+## 🔑 AI Error Diagnostics Configuration (Optional)
+AI is used solely for error classification and code fixes. You can provide a free OpenRouter API key via the **API Key** settings modal in the top navigation bar.
+
+---
+
+## 📜 License
+MIT License. Built with ❤️ for computer science students, educators, and software engineers.
